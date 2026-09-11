@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     if (!agent) return errorResponse("Agent not found", 404);
 
     // Billing gate: live execution (run + chat, which both spend credits)
-    // requires an active subscription when Clerk Billing is enabled.
+    // requires an active subscription when Dodo Payments billing is enabled.
     if (!(await hasActivePlan(user.email))) {
       return errorResponse(UPGRADE_MESSAGE, 402);
     }

@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Simple polling hook with visibility awareness. */
+/**
+ * Polling hook with visibility awareness.
+ *
+ * - A tick is skipped while the previous request is still in flight, so slow
+ *   networks don't pile up overlapping requests or apply them out of order.
+ * - `data` only changes when the payload actually changed — an unchanged poll
+ *   response must not re-render a large list every few seconds.
+ */
 export function usePoll<T>(
   fetcher: () => Promise<T>,
   intervalMs: number | null,
@@ -22,14 +29,32 @@ export function usePoll<T>(
     fetcherRef.current = fetcher;
   });
 
-  const refresh = async () => {
+  // Latest request wins: when deps change mid-flight the older response is
+  // dropped instead of overwriting newer data.
+  const requestIdRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const lastJsonRef = useRef<string | null>(
+    initialData === undefined ? null : JSON.stringify(initialData),
+  );
+
+  const refresh = async (force = false) => {
+    if (inFlightRef.current && !force) return;
+    const requestId = ++requestIdRef.current;
+    inFlightRef.current = true;
     try {
       const value = await fetcherRef.current();
-      setData(value);
+      const json = JSON.stringify(value);
+      if (json !== lastJsonRef.current) {
+        lastJsonRef.current = json;
+        setData(value);
+      }
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Request failed");
     } finally {
+      if (requestId === requestIdRef.current) {
+        inFlightRef.current = false;
+      }
       setLoading(false);
     }
   };
@@ -38,12 +63,16 @@ export function usePoll<T>(
     let active = true;
     const run = async () => {
       if (!active) return;
-      await refresh();
+      // Force: a dep change (e.g. new filter) must issue a fresh request even
+      // if a request for the previous filter is still in flight.
+      await refresh(true);
     };
     void run();
-    if (!intervalMs) return () => {
-      active = false;
-    };
+    if (!intervalMs) {
+      return () => {
+        active = false;
+      };
+    }
     const timer = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
       void run();

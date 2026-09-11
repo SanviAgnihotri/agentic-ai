@@ -61,7 +61,7 @@ const STEPS = [
 
 export default async function LandingPage() {
   const user = await getSessionUser();
-  const primaryHref = user ? "/dashboard" : "/sign-up";
+  const primaryHref = user ? "/dashboard" : "/sign-in";
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -93,7 +93,7 @@ export default async function LandingPage() {
                   <Link href="/sign-in">Sign in</Link>
                 </Button>
                 <Button asChild size="sm" className="h-8">
-                  <Link href="/sign-up">Get started</Link>
+                  <Link href="/sign-in">Get started</Link>
                 </Button>
               </>
             )}

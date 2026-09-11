@@ -29,6 +29,20 @@
       "when": 1789148917539,
       "tag": "0003_melted_white_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789155309509,
+      "tag": "0004_daily_shape",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789155758537,
+      "tag": "0005_thankful_karnak",
+      "breakpoints": true
     }
   ]
 }

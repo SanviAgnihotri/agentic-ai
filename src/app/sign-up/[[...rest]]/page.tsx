@@ -1,27 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { SignUp } from "@clerk/nextjs";
-import { AuthForm } from "@/components/auth/auth-form";
-import { AuthShell } from "@/components/auth/auth-shell";
-import { clerkEnabled, getSessionUser } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Sign up" };
+export const metadata: Metadata = { title: "Sign in" };
 
-export default async function SignUpPage() {
-  const user = await getSessionUser();
-  if (user) redirect("/dashboard");
-
-  if (clerkEnabled()) {
-    return (
-      <AuthShell>
-        <SignUp forceRedirectUrl="/dashboard" signInUrl="/sign-in" />
-      </AuthShell>
-    );
-  }
-
-  return (
-    <AuthShell>
-      <AuthForm mode="sign-up" />
-    </AuthShell>
-  );
+/**
+ * Registration is closed (this deployment is invite-only) — the sign-up page
+ * redirects to sign-in for anyone holding an old link.
+ */
+export default function SignUpPage() {
+  redirect("/sign-in");
 }

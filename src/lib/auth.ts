@@ -1,13 +1,9 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, eq, gt } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { userImage } from "./avatar";
-import { dodoEnabled } from "@/lib/dodo";
-
-export const SESSION_COOKIE = "groovy_session";
-const SESSION_TTL_DAYS = 30;
+import { getBetterAuth } from "./better-auth";
 
 export type SessionUser = {
   id: number;
@@ -21,95 +17,17 @@ export type SessionUser = {
   createdAt: Date;
 };
 
-/** scrypt password hashing — no native dependencies. */
-export function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `scrypt:${salt}:${hash}`;
-}
-
-export function verifyPassword(password: string, stored: string | null): boolean {
-  if (!stored) return false;
-  const [scheme, salt, hash] = stored.split(":");
-  if (scheme !== "scrypt" || !salt || !hash) return false;
-  const candidate = scryptSync(password, salt, 64);
-  const expected = Buffer.from(hash, "hex");
-  if (candidate.length !== expected.length) return false;
-  return timingSafeEqual(candidate, expected);
-}
-
-export async function createSessionCookie(userId: number): Promise<void> {
-  const db = await getDb();
-  const token = randomBytes(48).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
-  await db.insert(schema.sessions).values({ token, userId, expiresAt });
-  const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: expiresAt,
-  });
-}
-
-export async function destroySessionCookie(): Promise<void> {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (token) {
-    const db = await getDb();
-    await db.delete(schema.sessions).where(eq(schema.sessions.token, token));
-  }
-  store.delete(SESSION_COOKIE);
-}
-
+/**
+ * Resolve the signed-in user.
+ *
+ * Better Auth owns the session (Google / GitHub / email+password); the session
+ * user is mapped onto the app's `users` table by email, creating the row on
+ * first sign-in. The demo workspace signs in through Better Auth too
+ * (`/api/demo` seeds its identity with known credentials).
+ */
 export async function getSessionUser(): Promise<SessionUser | null> {
   try {
-    if (clerkEnabled()) {
-      const { currentUser } = await import("@clerk/nextjs/server");
-      const clerkUser = await currentUser();
-      if (clerkUser) {
-        const email =
-          clerkUser.primaryEmailAddress?.emailAddress ??
-          clerkUser.emailAddresses[0]?.emailAddress;
-        if (email) {
-          return upsertClerkUser({
-            email,
-            name: clerkUser.fullName,
-            imageUrl: clerkUser.imageUrl,
-          });
-        }
-      }
-      // No Clerk session — fall through to the built-in cookie session
-      // (covers the demo login and any pre-Clerk users).
-    }
-
-    const store = await cookies();
-    const token = store.get(SESSION_COOKIE)?.value;
-    if (!token) return null;
-    const db = await getDb();
-    const rows = await db
-      .select({
-        id: schema.users.id,
-        name: schema.users.name,
-        email: schema.users.email,
-        imageUrl: schema.users.imageUrl,
-        timezone: schema.users.timezone,
-        plan: schema.users.plan,
-        agentCredits: schema.users.agentCredits,
-        usageCredits: schema.users.usageCredits,
-        createdAt: schema.users.createdAt,
-      })
-      .from(schema.sessions)
-      .innerJoin(schema.users, eq(schema.sessions.userId, schema.users.id))
-      .where(
-        and(
-          eq(schema.sessions.token, token),
-          gt(schema.sessions.expiresAt, new Date()),
-        ),
-      )
-      .limit(1);
-    return rows[0] ?? null;
+    return await betterAuthSessionUser();
   } catch {
     return null;
   }
@@ -121,15 +39,28 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
-/** Clerk is active only when both keys are configured. */
-export function clerkEnabled(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
-  );
+/** Resolve the Better Auth session and map it onto our `users` table. */
+async function betterAuthSessionUser(): Promise<SessionUser | null> {
+  const auth = await getBetterAuth();
+  const session = await auth.api.getSession({ headers: await headers() });
+  const baUser = session?.user;
+  if (!baUser?.email) return null;
+
+  return upsertAppUser({
+    email: baUser.email.toLowerCase(),
+    name: baUser.name ?? null,
+    imageUrl: baUser.image ?? null,
+  });
 }
 
-/** Map a Clerk identity onto our users table (create or refresh profile). */
-async function upsertClerkUser(input: {
+/**
+ * Map a Better Auth identity onto our users table (create or refresh profile).
+ *
+ * `users.plan` is owned by the Dodo Payments webhook — this never touches it.
+ * Background schedulers gate on the mirrored plan, so the row must exist by
+ * the time an agent is created (it does: agent APIs require a session).
+ */
+export async function upsertAppUser(input: {
   email: string;
   name: string | null;
   imageUrl: string | null;
@@ -137,19 +68,20 @@ async function upsertClerkUser(input: {
   const db = await getDb();
   const displayName = input.name?.trim() || input.email.split("@")[0];
 
-  // Mirror the Clerk Billing entitlement so background schedulers (no request
-  // context) can gate live runs — but ONLY when Clerk Billing is the payment
-  // provider. With Dodo Payments enabled, the Dodo webhook owns `users.plan`
-  // and this session refresh must never clobber it.
-  let plan: string | undefined;
-  if (!dodoEnabled()) {
-    const { auth } = await import("@clerk/nextjs/server");
-    const { has } = await auth();
-    plan = has?.({ plan: "pro" }) ? "pro" : "free";
-  }
+  const selection = {
+    id: schema.users.id,
+    name: schema.users.name,
+    email: schema.users.email,
+    imageUrl: schema.users.imageUrl,
+    timezone: schema.users.timezone,
+    plan: schema.users.plan,
+    agentCredits: schema.users.agentCredits,
+    usageCredits: schema.users.usageCredits,
+    createdAt: schema.users.createdAt,
+  };
 
   const existing = await db
-    .select()
+    .select(selection)
     .from(schema.users)
     .where(eq(schema.users.email, input.email))
     .limit(1);
@@ -160,7 +92,6 @@ async function upsertClerkUser(input: {
     if (input.imageUrl && input.imageUrl !== existing[0].imageUrl) {
       updates.imageUrl = input.imageUrl;
     }
-    if (plan && plan !== existing[0].plan) updates.plan = plan;
     if (Object.keys(updates).length > 0) {
       await db.update(schema.users).set(updates).where(eq(schema.users.email, input.email));
     }
@@ -173,19 +104,18 @@ async function upsertClerkUser(input: {
       email: input.email,
       name: displayName,
       imageUrl: input.imageUrl ?? userImage(displayName),
-      ...(plan ? { plan } : {}),
     })
     .onConflictDoNothing()
-    .returning();
+    .returning(selection);
 
   if (inserted[0]) return inserted[0];
 
   const retry = await db
-    .select()
+    .select(selection)
     .from(schema.users)
     .where(eq(schema.users.email, input.email))
     .limit(1);
-  if (!retry[0]) throw new Error("Could not create user record for Clerk identity");
+  if (!retry[0]) throw new Error("Could not create user record for auth identity");
   return retry[0];
 }
 

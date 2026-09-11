@@ -40,7 +40,7 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
   async function startCheckout() {
     setError(null);
     if (!signedIn) {
-      router.push("/sign-up");
+      router.push("/sign-in");
       return;
     }
     setPending("checkout");
@@ -152,9 +152,9 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
           <Button
             variant="outline"
             className="mt-6 h-10 w-full rounded-xl"
-            onClick={() => router.push(signedIn ? "/dashboard" : "/sign-up")}
+            onClick={() => router.push(signedIn ? "/dashboard" : "/sign-in")}
           >
-            {signedIn ? "Open dashboard" : "Create free account"}
+            {signedIn ? "Open dashboard" : "Sign in"}
           </Button>
           <div className="my-6 h-px bg-border/60" />
           <ul className="space-y-3 text-sm">

@@ -16,16 +16,19 @@ import {
  * Mirrors the tutorial's four core tables (users, tools, agent_config, agent_run)
  * with the same jsonb-based agent configuration shape, plus three additive tables
  * needed for the full product shown in the demo:
- *  - sessions          → local auth sessions (tutorial uses Clerk; adapter-friendly)
  *  - agent_messages    → chat history (tutorial chat is stateless)
  *  - tool_connections  → demo-mode integration connections (Composio owns these in production)
+ *  - user/session/account/verification → Better Auth identity tables
+ *
+ * Auth is Better Auth: `user`/`session`/`account`/`verification` hold identity
+ * and sessions; the app-specific profile (plan, credits, Dodo ids) lives in
+ * `users`, mapped from the Better Auth identity by email (`upsertAppUser`).
  */
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 512 }),
   imageUrl: text("image_url"),
   timezone: varchar("timezone", { length: 64 }).default("UTC"),
   plan: varchar("plan", { length: 32 }).default("free"),
@@ -36,16 +39,6 @@ export const users = pgTable("users", {
   dodoCustomerId: varchar("dodo_customer_id", { length: 255 }).unique(),
   dodoSubscriptionId: varchar("dodo_subscription_id", { length: 255 }),
   subscriptionStatus: varchar("subscription_status", { length: 32 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const sessions = pgTable("sessions", {
-  id: serial("id").primaryKey(),
-  token: varchar("token", { length: 128 }).notNull().unique(),
-  userId: integer("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -172,3 +165,67 @@ export const toolConnections = pgTable(
   },
   (t) => [index("tool_connections_user_idx").on(t.userEmail, t.slug)],
 );
+
+/* ------------------------------------------------------------------------ */
+/* Better Auth (replaces Clerk) — user/session/account/verification tables.  */
+/* Column names follow Better Auth's defaults exactly (camelCase) so the     */
+/* drizzle adapter maps 1:1. App-specific profile data stays in `users`.    */
+/* ------------------------------------------------------------------------ */
+
+export const betterAuthUser = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("emailVerified").notNull().default(false),
+  image: text("image"),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+});
+
+export const betterAuthSession = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("createdAt").notNull(),
+    updatedAt: timestamp("updatedAt").notNull(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    userId: text("userId")
+      .notNull()
+      .references(() => betterAuthUser.id, { onDelete: "cascade" }),
+  },
+  (t) => [index("session_userId_idx").on(t.userId)],
+);
+
+export const betterAuthAccount = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("accountId").notNull(),
+    providerId: text("providerId").notNull(),
+    userId: text("userId")
+      .notNull()
+      .references(() => betterAuthUser.id, { onDelete: "cascade" }),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
+    refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("createdAt").notNull(),
+    updatedAt: timestamp("updatedAt").notNull(),
+  },
+  (t) => [index("account_userId_idx").on(t.userId)],
+);
+
+export const betterAuthVerification = pgTable("verification", {
+  id: text("id").primaryKey(),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+});

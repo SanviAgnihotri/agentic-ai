@@ -28,10 +28,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/components/user-provider";
-import { clerkClientEnabled as clerkEnabled } from "@/lib/clerk-client";
 import { FREE_USAGE_CREDITS, PRO_USAGE_CREDITS } from "@/lib/plans";
 import { UserMenu } from "./user-menu";
-import { ClerkProfileButton } from "./clerk-profile-button";
 
 /** Visible upgrade CTA (or a Pro badge once subscribed). */
 function UpgradeCta() {
@@ -186,7 +184,7 @@ export function AppSidebar() {
         <SidebarSeparator className="group-data-[collapsible=icon]:hidden" />
         <SidebarMenu>
           <SidebarMenuItem>
-            {clerkEnabled ? <ClerkProfileButton /> : <UserMenu />}
+            <UserMenu />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

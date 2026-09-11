@@ -1,14 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, LogOut, Settings, Sparkles, UserRound } from "lucide-react";
+import { ChevronsUpDown, LogOut, Sparkles, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -16,26 +15,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { useUser } from "@/components/user-provider";
-import { ClerkSignOut } from "@/components/layout/clerk-sign-out";
-import { apiFetch } from "@/hooks/use-poll";
-
-import { clerkClientEnabled as clerkEnabled } from "@/lib/clerk-client";
+import { authClient } from "@/lib/auth-client";
 
 export function UserMenu() {
   const router = useRouter();
   const { user, setUser } = useUser();
 
   const signOut = async () => {
-    // When Clerk manages the session, the <ClerkSignOut /> menu item ends the
-    // Clerk session; the built-in cookie flow keeps working without keys.
+    // End the Better Auth session — the only session system in the app.
     try {
-      await apiFetch("/api/auth/sign-out", { method: "POST" });
-      setUser(null);
-      toast.success("Signed out");
-      router.push("/");
+      await authClient.signOut();
     } catch {
       toast.error("Could not sign out");
+      return;
     }
+    setUser(null);
+    toast.success("Signed out");
+    router.push("/");
   };
 
   const initials = (user?.name ?? user?.email ?? "G")
@@ -91,14 +87,10 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {clerkEnabled ? (
-          <ClerkSignOut />
-        ) : (
-          <DropdownMenuItem onClick={signOut}>
-            <LogOut className="size-4" />
-            Sign out
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem onClick={signOut}>
+          <LogOut className="size-4" />
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

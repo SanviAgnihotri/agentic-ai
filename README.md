@@ -32,7 +32,7 @@ usable for demos and local development.
 | **Data** | Drizzle ORM — embedded PGlite locally, any Postgres (Aiven/Neon) in production |
 | **AI** | OpenCode Go (DeepSeek), Groq, OpenAI, Gemini — or the built-in mock |
 | **Automation** | Composio (integrations), Browserbase (browser), Inngest (background jobs) |
-| **Auth** | Clerk (optional) with a zero-config demo fallback |
+| **Auth** | Better Auth — email+password & GitHub sign-in (invite-only: sign-up disabled, allowlist-gated) |
 
 ## 🚀 Getting started
 

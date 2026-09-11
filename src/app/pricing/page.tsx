@@ -93,7 +93,7 @@ export default async function PricingPage() {
                 <Link href="/sign-in">Sign in</Link>
               </Button>
               <Button size="sm" className="rounded-full" asChild>
-                <Link href="/sign-up">Get started</Link>
+                <Link href="/sign-in">Get started</Link>
               </Button>
             </>
           )}

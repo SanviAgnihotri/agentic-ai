@@ -14,12 +14,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// Clerk powers auth (and billing) when keys are present; without keys the
-// built-in session auth keeps working — zero-config dev mode.
-const clerkEnabled = Boolean(
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && process.env.CLERK_SECRET_KEY,
-);
-
 export const metadata: Metadata = {
   title: {
     default: "Groovy AI — Your autonomous agent workforce",
@@ -54,25 +48,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       style={{ colorScheme: theme }}
     >
       <body className="flex min-h-full flex-col bg-background">
-        {clerkEnabled ? (
-          <ClerkProviderWrapper>{children}</ClerkProviderWrapper>
-        ) : (
-          <Providers>{children}</Providers>
-        )}
+        <Providers>{children}</Providers>
       </body>
     </html>
-  );
-}
-
-// Loaded lazily so the app runs with zero Clerk configuration.
-async function ClerkProviderWrapper({ children }: { children: React.ReactNode }) {
-  const [{ ClerkProvider }, { Providers }] = await Promise.all([
-    import("@clerk/nextjs"),
-    import("@/components/providers"),
-  ]);
-  return (
-    <ClerkProvider>
-      <Providers>{children}</Providers>
-    </ClerkProvider>
   );
 }
