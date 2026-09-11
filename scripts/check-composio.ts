@@ -7,9 +7,14 @@ import { homedir } from "node:os";
 import { Composio } from "@composio/core";
 
 async function main() {
-  const data = JSON.parse(
-    readFileSync(`${homedir()}/.composio/user_data.json`, "utf8"),
-  ) as { api_key?: string; base_url?: string };
+  let data: { api_key?: string; base_url?: string } = {};
+  try {
+    data = JSON.parse(
+      readFileSync(`${homedir()}/.composio/user_data.json`, "utf8"),
+    ) as { api_key?: string; base_url?: string };
+  } catch {
+    // No CLI-provisioned file — fall back to COMPOSIO_API_KEY below.
+  }
   const apiKey = process.env.COMPOSIO_API_KEY || data.api_key;
   if (!apiKey) throw new Error("No Composio key found");
   console.log("key prefix:", apiKey.slice(0, 4) + "…");
