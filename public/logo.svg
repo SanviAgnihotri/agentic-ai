@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="#1D1D1F"/>
+  <!-- primary agent spark -->
+  <path d="M29 16 C30.6 30.4 32.6 32.4 47 34 C32.6 35.6 30.6 37.6 29 52 C27.4 37.6 25.4 35.6 11 34 C25.4 32.4 27.4 30.4 29 16 Z" fill="#FFFFFF"/>
+  <!-- companion spark -->
+  <path d="M46 16.5 C46.9 21.6 47.9 22.6 53 23.5 C47.9 24.4 46.9 25.4 46 30.5 C45.1 25.4 44.1 24.4 39 23.5 C44.1 22.6 45.1 21.6 46 16.5 Z" fill="#FFFFFF" fill-opacity="0.62"/>
+</svg>

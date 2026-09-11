@@ -1,0 +1,1 @@
+CREATE INDEX "agent_run_user_email_idx" ON "agent_run" USING btree ("user_email","created_at");

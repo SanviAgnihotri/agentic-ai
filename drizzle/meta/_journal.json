@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789026275678,
+      "tag": "0000_brainy_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789034811775,
+      "tag": "0001_widen-avatar-columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789143580402,
+      "tag": "0002_confused_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789148917539,
+      "tag": "0003_melted_white_queen",
+      "breakpoints": true
+    }
+  ]
+}
