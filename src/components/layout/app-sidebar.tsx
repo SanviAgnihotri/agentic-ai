@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Layers,
   PlayCircle,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import {
@@ -74,6 +75,7 @@ const WORKSPACE_ITEMS = [
 
 const ACCOUNT_ITEMS = [
   { title: "Billing", href: "/dashboard/billing", icon: CreditCard },
+  { title: "Settings", href: "/dashboard/settings", icon: Settings },
 ] satisfies Array<{ title: string; href: string; icon: typeof CreditCard }>;
 
 export function AppSidebar() {
