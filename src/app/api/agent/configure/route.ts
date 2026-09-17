@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/db";
 import type { ScheduleConfig } from "@/db/schema";
@@ -128,10 +128,14 @@ export async function POST(request: Request) {
     console.error("[agent/configure POST]", error);
     const message = error instanceof Error ? error.message : "Internal server error";
     const isProviderError = /groq|openai|gemini|model|api key|rate limit/i.test(message);
+    const isGenerationError =
+      /json|parse|schema|invalid|expected|unexpected|did not return/i.test(message);
     return errorResponse(
       isProviderError
         ? `AI provider error: ${message}`
-        : "Internal server error",
+        : isGenerationError
+          ? "The planner returned an invalid configuration. Please try again — it usually succeeds on a retry."
+          : "Internal server error",
       isProviderError ? 502 : 500,
     );
   }

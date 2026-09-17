@@ -39,31 +39,53 @@ export async function generateAgentConfig(options: {
     ? `${options.prompt}\n\n${CLARIFICATION_ANSWER_HEADER}\n${JSON.stringify(options.answers)}`
     : options.prompt;
 
-  const system = AGENT_CONFIG_SYSTEM_PROMPT.replace(
-    "[AVAILABLE_TOOLS]",
-    toolSlugs.join(", "),
-  )
-    .replace(
-      "[CONNECTED_TOOLS]",
-      connected.length > 0
-        ? connected.map((tool) => `${tool.slug} (${tool.name})`).join(", ")
-        : "None connected yet.",
-    )
-    .replace("[USER_PROMPT]", composedPrompt);
+  const buildSystem = (correction?: string) =>
+    AGENT_CONFIG_SYSTEM_PROMPT.replace("[AVAILABLE_TOOLS]", toolSlugs.join(", "))
+      .replace(
+        "[CONNECTED_TOOLS]",
+        connected.length > 0
+          ? connected.map((tool) => `${tool.slug} (${tool.name})`).join(", ")
+          : "None connected yet.",
+      )
+      .replace("[USER_PROMPT]", composedPrompt) + (correction ? `\n\n${correction}` : "");
 
-  return llm.generateObject<AgentConfigAiResponse>({
-    system,
-    prompt: composedPrompt,
-    schema: agentConfigResponseSchema,
-    schemaName: "agent_config_response",
-    temperature: 0.4,
-    mockContext: {
-      kind: "agent-config",
-      prompt: composedPrompt,
-      toolSlugs,
-      connectedToolSlugs: connected.map((tool) => tool.slug),
-    },
-  });
+  // LLMs occasionally emit malformed JSON or a wrong-shaped object for the
+  // config schema. Retry with a corrective instruction instead of failing the
+  // whole agent-creation request on one bad generation.
+  const RECOVERABLE =
+    /json|parse|schema|invalid|expected|unexpected|did not return/i;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      return await llm.generateObject<AgentConfigAiResponse>({
+        system: buildSystem(
+          attempt > 1
+            ? "IMPORTANT: your previous reply could not be validated. Reply with a single valid JSON object that matches the schema exactly — no prose, no markdown fences."
+            : undefined,
+        ),
+        prompt: composedPrompt,
+        schema: agentConfigResponseSchema,
+        schemaName: "agent_config_response",
+        temperature: 0.4,
+        mockContext: {
+          kind: "agent-config",
+          prompt: composedPrompt,
+          toolSlugs,
+          connectedToolSlugs: connected.map((tool) => tool.slug),
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (!RECOVERABLE.test(message)) throw error;
+      console.warn(
+        `[ai] agent config generation attempt ${attempt}/3 failed: ${message.slice(0, 200)}`,
+      );
+    }
+  }
+
+  throw lastError;
 }
 
 export async function generateAgentChat(options: {

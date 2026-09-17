@@ -68,7 +68,7 @@ export const agentConfigResponseSchema = z.object({
     .describe("Whether questions are required or the config is complete"),
   clarificationQuestions: z
     .array(clarificationQuestionSchema)
-    .optional()
+    .nullish()
     .describe("Present only when status is needs_clarification"),
   config: generatedAgentConfigSchema
     .nullable()
