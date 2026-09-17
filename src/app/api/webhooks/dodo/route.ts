@@ -6,6 +6,7 @@ import {
   type WebhookHandlerConfig,
 } from "@dodopayments/core";
 import { getDb, schema } from "@/db";
+import { upsertAppUser } from "@/lib/auth";
 import { dodoWebhookEnabled } from "@/lib/dodo";
 import { PRO_USAGE_CREDITS } from "@/lib/plans";
 
@@ -70,8 +71,23 @@ async function applySubscriptionState(input: {
   plan?: "pro" | "free";
   resetCredits?: boolean;
 }) {
-  const user = await findUser({ customerId: input.customerId, email: input.email });
-  if (!user) {
+  const existing = await findUser({ customerId: input.customerId, email: input.email });
+  let userId = existing?.id ?? null;
+
+  if (userId === null && input.email) {
+    // The app profile row is created on first session resolution, but a
+    // webhook can beat that (checkout completes before the dashboard is
+    // opened). Dodo is signature-verified, so the customer email is
+    // trustworthy: create the profile now so the entitlement is never lost.
+    const profile = await upsertAppUser({
+      email: input.email.toLowerCase(),
+      name: null,
+      imageUrl: null,
+    });
+    userId = profile.id;
+  }
+
+  if (userId === null) {
     // Throwing surfaces the problem to Dodo (non-2xx → retry) instead of
     // silently dropping an entitlement the customer paid for.
     throw new Error(
@@ -92,7 +108,7 @@ async function applySubscriptionState(input: {
   if (Object.keys(patch).length === 0) return;
 
   const db = await getDb();
-  await db.update(schema.users).set(patch).where(eq(schema.users.id, user.id));
+  await db.update(schema.users).set(patch).where(eq(schema.users.id, userId));
 }
 
 type EventFields = {

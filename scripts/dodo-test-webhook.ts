@@ -82,7 +82,7 @@ const email = `dodo-test-${Date.now()}@groovy.ai`;
 const password = "dodo-test-password-123";
 
 // 1. Fresh free account (sets the session cookie).
-const signUp = await fetch(`${baseUrl}/api/auth/sign-up`, {
+const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ name: "Dodo Webhook Test", email, password }),
