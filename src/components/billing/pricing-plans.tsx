@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/hooks/use-poll";
@@ -29,9 +30,23 @@ interface PricingPlansProps {
 
 export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPlansProps) {
   const router = useRouter();
-  const [interval, setInterval] = useState<BillingInterval>("monthly");
+  const searchParams = useSearchParams();
+  // Interval lives in the URL so a signed-out checkout round-trip through
+  // /sign-in comes back to the same choice (`?interval=yearly`).
+  const [interval, setInterval] = useState<BillingInterval>(
+    searchParams.get("interval") === "yearly" ? "yearly" : "monthly",
+  );
   const [pending, setPending] = useState<"checkout" | "portal" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const selectInterval = (value: BillingInterval) => {
+    setInterval(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "monthly") params.delete("interval");
+    else params.set("interval", value);
+    const qs = params.toString();
+    router.replace(qs ? `/pricing?${qs}` : "/pricing", { scroll: false });
+  };
 
   const isPro = currentPlan === "pro";
   const price = priceForInterval(interval);
@@ -40,7 +55,8 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
   async function startCheckout() {
     setError(null);
     if (!signedIn) {
-      router.push("/sign-in");
+      const next = interval === "yearly" ? "/pricing?interval=yearly" : "/pricing";
+      router.push(`/sign-in?redirect_url=${encodeURIComponent(next)}`);
       return;
     }
     setPending("checkout");
@@ -91,16 +107,17 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
     <div className="mx-auto mt-14 max-w-4xl">
       {/* Billing interval toggle */}
       <div className="flex flex-col items-center gap-3">
-        <div className="inline-flex items-center rounded-full border border-border/60 bg-card/80 p-1 backdrop-blur">
+        <div className="inline-flex items-center rounded-lg border border-border/60 bg-card/80 p-1 backdrop-blur">
           {(["monthly", "yearly"] as const).map((value) => (
             <button
               key={value}
               type="button"
-              onClick={() => setInterval(value)}
+              onClick={() => selectInterval(value)}
+              aria-pressed={interval === value}
               className={cn(
-                "relative rounded-full px-5 py-2 text-sm font-medium capitalize transition-all",
+                "relative rounded-md px-5 py-2 text-sm font-medium capitalize transition-colors",
                 interval === value
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -108,7 +125,7 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
               {value === "yearly" ? (
                 <span
                   className={cn(
-                    "ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                    "ml-2 rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
                     interval === value
                       ? "bg-primary-foreground/20 text-primary-foreground"
                       : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -149,12 +166,10 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
           <p className="mt-2 min-h-4 text-xs text-muted-foreground">
             No credit card required
           </p>
-          <Button
-            variant="outline"
-            className="mt-6 h-10 w-full"
-            onClick={() => router.push(signedIn ? "/dashboard" : "/sign-in")}
-          >
-            {signedIn ? "Open dashboard" : "Sign in"}
+          <Button variant="outline" className="mt-6 h-10 w-full" asChild>
+            <Link href={signedIn ? "/dashboard" : "/sign-in?redirect_url=%2Fpricing"}>
+              {signedIn ? "Open dashboard" : "Sign in"}
+            </Link>
           </Button>
           <div className="my-6 h-px bg-border/60" />
           <ul className="space-y-3 text-sm">

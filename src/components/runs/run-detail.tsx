@@ -29,6 +29,17 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useReducedMotion } from "motion/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -133,9 +144,11 @@ function humanizeSlug(slug: string): string {
 
 export function RunDetail({ runId }: { runId: number }) {
   const router = useRouter();
+  const reducedMotion = useReducedMotion();
   const [running, setRunning] = useState(false);
   const [stopping, setStopping] = useState(false);
-  const { data, loading, refresh } = usePoll<RunDetailResponse>(
+  const [confirmStop, setConfirmStop] = useState(false);
+  const { data, error, loading, refresh } = usePoll<RunDetailResponse>(
     () => apiFetch<RunDetailResponse>(`/api/runs/${runId}`),
     2500,
     [runId],
@@ -166,18 +179,23 @@ export function RunDetail({ runId }: { runId: number }) {
     }
   }
 
-  // Keep the newest steps in view while a run is live.
+  // Keep the newest steps in view while a run is live — but never fight a
+  // user who has scrolled up to read earlier steps, and skip smooth motion
+  // when reduced motion is requested.
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const lastStepCountRef = useRef(0);
   useEffect(() => {
-    if (isActive && steps.length !== lastStepCountRef.current) {
-      lastStepCountRef.current = steps.length;
-      timelineRef.current?.scrollTo({
-        top: timelineRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
-  }, [steps.length, isActive]);
+    if (!isActive || steps.length === lastStepCountRef.current) return;
+    lastStepCountRef.current = steps.length;
+    const el = timelineRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom > 80) return;
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  }, [steps.length, isActive, reducedMotion]);
   const liveUrl = steps
     .map((step) => {
       const output = step.output as Record<string, unknown> | undefined;
@@ -220,15 +238,43 @@ export function RunDetail({ runId }: { runId: number }) {
             : "Run cancelled",
         );
       } else {
-        toast.info(`Run is already ${result.status}`);
+        toast.info(
+          `This run is already ${result.status} — no action needed.`,
+        );
       }
       await refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not stop the run");
+      toast.error(
+        error instanceof Error
+          ? `${error.message}. Try again in a moment.`
+          : "Could not stop the run — try again in a moment.",
+      );
     } finally {
       setStopping(false);
     }
   };
+
+  if (error && !data) {
+    return (
+      <Card className="border-destructive/30">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <AlertTriangle className="size-5 text-destructive" />
+          <div>
+            <p className="font-medium">Couldn’t load this run</p>
+            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => void refresh()}>
+              Try again
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard/runs">Back to runs</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading && !data) {
     return (
@@ -273,7 +319,7 @@ export function RunDetail({ runId }: { runId: number }) {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-semibold">{agent?.name ?? "Agent"}</h1>
               <StatusBadge status={run.status} />
-              <Badge variant="secondary" className="text-[10px] capitalize">
+              <Badge variant="secondary" className="text-[11px] capitalize">
                 {run.trigger} run
               </Badge>
             </div>
@@ -297,7 +343,7 @@ export function RunDetail({ runId }: { runId: number }) {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-red-600 dark:text-red-400"
-                onClick={stopRun}
+                onClick={() => setConfirmStop(true)}
                 disabled={stopping}
               >
                 {stopping ? (
@@ -345,7 +391,7 @@ export function RunDetail({ runId }: { runId: number }) {
         <Card className="flex min-h-0 flex-col overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-base">Execution timeline</CardTitle>
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge variant="secondary" className="text-[11px]">
               {steps.length} steps
             </Badge>
           </CardHeader>
@@ -372,7 +418,7 @@ export function RunDetail({ runId }: { runId: number }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2" aria-live="polite">
                 {timelineRows.map((row) => {
                   if (row.kind === "tool") {
                     const slug = row.call.title.replace(/^Using /, "");
@@ -533,6 +579,27 @@ export function RunDetail({ runId }: { runId: number }) {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={confirmStop} onOpenChange={setConfirmStop}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stop this run?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The agent finishes the current step and then stops. Partial output is
+              kept and the run is marked as cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep running</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => void stopRun()}
+            >
+              Stop run
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -540,7 +607,7 @@ export function RunDetail({ runId }: { runId: number }) {
 function StepPayload({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         <Braces className="size-3" />
         {label}
       </p>

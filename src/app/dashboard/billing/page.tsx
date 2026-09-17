@@ -21,6 +21,29 @@ import { FREE_USAGE_CREDITS, PRO_USAGE_CREDITS } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "Billing" };
 
+/** Dodo subscription statuses are snake_case — render them human. */
+const STATUS_LABELS: Record<string, string> = {
+  on_hold: "On hold",
+  canceled: "Cancelled",
+  cancelled: "Cancelled",
+  trialing: "Trialing",
+  active: "Active",
+  expired: "Expired",
+  failed: "Failed",
+  paused: "Paused",
+  pending: "Pending",
+};
+
+function statusLabel(status: string | null | undefined): string {
+  if (!status) return "—";
+  return (
+    STATUS_LABELS[status] ??
+    status
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+  );
+}
+
 export default async function BillingPage({
   searchParams,
 }: {
@@ -110,7 +133,7 @@ export default async function BillingPage({
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div>
                 <dt className="text-muted-foreground">Status</dt>
-                <dd className="mt-0.5 font-medium capitalize">{status ?? "—"}</dd>
+                <dd className="mt-0.5 font-medium">{statusLabel(status)}</dd>
               </div>
               <div>
                 <dt className="text-muted-foreground">
@@ -155,12 +178,16 @@ export default async function BillingPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">
-                {credits} / {total}
+              <span className="font-medium tabular-nums">
+                {credits.toLocaleString("en")} / {total.toLocaleString("en")}
               </span>
-              <span className="text-muted-foreground">{percent}% left</span>
+              <span className="tabular-nums text-muted-foreground">{percent}% left</span>
             </div>
-            <Progress value={percent} className="h-2" />
+            <Progress
+              value={percent}
+              aria-label={`Usage credits: ${percent}% left`}
+              className="h-2"
+            />
             {!isPro ? (
               <p className="text-sm text-muted-foreground">
                 Pro includes 2,000 credits per month — 10× the free allowance.

@@ -143,12 +143,18 @@ export function AgentCard({
                 {agent.lastRun
                   ? `Last run ${relativeTime(agent.lastRun.createdAt)}`
                   : "No runs yet"}
-                {typeof agent.runCount === "number" && ` · ${agent.runCount} runs`}
+                {typeof agent.runCount === "number" &&
+                  ` · ${agent.runCount} ${agent.runCount === 1 ? "run" : "runs"}`}
               </p>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={`More actions for ${agent.name}`}
+                >
                   <MoreVertical className="size-4" />
                 </Button>
               </DropdownMenuTrigger>

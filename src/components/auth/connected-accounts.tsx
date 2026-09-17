@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { KeyRound, Loader2, Plug, Unplug } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 import { GitHubIcon, GoogleIcon } from "./provider-icons";
@@ -40,6 +50,7 @@ export function ConnectedAccounts({
 }) {
   const [accounts, setAccounts] = useState<AccountRow[]>(initialAccounts);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmAccount, setConfirmAccount] = useState<AccountRow | null>(null);
 
   // Re-read after a disconnect — connect flows leave the page entirely.
   const refresh = async () => {
@@ -91,6 +102,7 @@ export function ConnectedAccounts({
   };
 
   return (
+    <>
     <ul className="divide-y divide-border/60">
       {credential ? (
         <li className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
@@ -155,12 +167,13 @@ export function ConnectedAccounts({
                 size="sm"
                 className="gap-1.5 text-muted-foreground"
                 disabled={busy !== null || isLastAccount}
+                aria-label={`Disconnect ${PROVIDER_LABEL[account.providerId]}`}
                 title={
                   isLastAccount
-                    ? "You can't disconnect your only sign-in method"
+                    ? "You can’t disconnect your only sign-in method"
                     : `Disconnect ${PROVIDER_LABEL[account.providerId]}`
                 }
-                onClick={() => void disconnect(account)}
+                onClick={() => setConfirmAccount(account)}
               >
                 {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Unplug className="size-3.5" />}
                 Disconnect
@@ -170,5 +183,41 @@ export function ConnectedAccounts({
         );
       })}
     </ul>
+
+    <AlertDialog
+      open={confirmAccount !== null}
+      onOpenChange={(open) => {
+        if (!open) setConfirmAccount(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Disconnect{" "}
+            {confirmAccount
+              ? PROVIDER_LABEL[confirmAccount.providerId] ?? confirmAccount.providerId
+              : "account"}
+            ?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            You won’t be able to sign in with this provider anymore. You can
+            reconnect it any time from this page.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep connected</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            onClick={() => {
+              if (confirmAccount) void disconnect(confirmAccount);
+              setConfirmAccount(null);
+            }}
+          >
+            Disconnect
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
