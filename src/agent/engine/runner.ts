@@ -7,6 +7,12 @@ import {
 import { getLlm } from "@/agent/ai";
 import type { ChatMessage } from "@/agent/ai/types";
 import { buildAgentToolset, toLlmToolSpecs } from "@/agent/tools/runtime";
+import {
+  markdownToPlainText,
+  telegramChatIdFromSteps,
+  telegramDeliverableSent,
+} from "@/agent/tools/telegram";
+import { appUrl } from "@/lib/dodo";
 
 export interface RunnerAgent {
   agentId: string;
@@ -383,6 +389,85 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
       detail: finalSummary,
       output: { markdown: finalOutput },
     });
+
+    // Deterministic delivery: the deliverable goes to Telegram as part of the
+    // run itself — never left to the model's whim. Skipped when Telegram is
+    // not connected/configured, or when the model already sent a substantial
+    // message (so the user never receives the same brief twice).
+    const telegramTool = toolset.tools.find(
+      (tool) =>
+        tool.name.toUpperCase() === "TELEGRAM_SEND_MESSAGE" &&
+        tool.source === "composio",
+    );
+    if (telegramTool && finalOutput && !telegramDeliverableSent(steps)) {
+      let chatId = options.agent.telegramChatId?.trim() || null;
+      if (!chatId) {
+        // Learn from a send the model made earlier in this run, and remember it.
+        chatId = telegramChatIdFromSteps(steps);
+        if (chatId) {
+          try {
+            const { getDb, schema } = await import("@/db");
+            const { eq } = await import("drizzle-orm");
+            const db = await getDb();
+            await db
+              .update(schema.agentConfig)
+              .set({ telegramChatId: chatId, updatedAt: new Date() })
+              .where(eq(schema.agentConfig.agentId, options.agent.agentId));
+          } catch (error) {
+            console.warn("[runner] could not persist learned telegram chat id:", error);
+          }
+        }
+      }
+
+      if (chatId) {
+        const started = Date.now();
+        await emit({
+          type: "tool_call",
+          title: "Sending deliverable to Telegram",
+          toolSlug: telegramTool.name,
+          input: { chat_id: chatId },
+          detail: "Automatic delivery after generation",
+        });
+        try {
+          const link = options.runId
+            ? `\n\n${appUrl()}/dashboard/runs/${options.runId}`
+            : "";
+          const execution = await withTimeout(
+            toolset.execute(telegramTool.name, {
+              chat_id: chatId,
+              // Plain text: deterministic and never trips Telegram's parser.
+              text: `${markdownToPlainText(finalOutput)}${link}`,
+            }),
+            toolTimeoutMs,
+            `Telegram delivery timed out after ${Math.round(toolTimeoutMs / 1000)}s`,
+          );
+          creditsUsed += 1;
+          await emit({
+            type: "tool_result",
+            title: execution.title,
+            toolSlug: telegramTool.name,
+            detail: execution.summary,
+            output: execution.output,
+            durationMs: Date.now() - started,
+          });
+        } catch (error) {
+          // Delivery failure never fails the run — the deliverable still
+          // lives on the run page.
+          await emit({
+            type: "tool_result",
+            title: "Telegram delivery failed",
+            toolSlug: telegramTool.name,
+            detail: error instanceof Error ? error.message : "Telegram delivery failed",
+            output: {
+              error: "tool_failed",
+              tool: telegramTool.name,
+              message: error instanceof Error ? error.message : String(error),
+            },
+            durationMs: Date.now() - started,
+          });
+        }
+      }
+    }
 
     return {
       status: "completed",

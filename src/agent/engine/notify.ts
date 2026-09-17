@@ -5,38 +5,28 @@ import {
   integrationMode,
   isToolConnected,
 } from "@/agent/integrations";
-import type { RunStep } from "@/db/schema";
+import { telegramChatIdFromSteps } from "@/agent/tools/telegram";
 import { appUrl } from "@/lib/dodo";
 
 /**
- * Instant Telegram notification when an agent run finishes.
+ * Failure alert for finished agent runs.
  *
- * Runs outside the agent's own tool loop, right after the run row is
- * finalized, so the user hears about completed/failed jobs even when the
- * model never chose to send a message itself.
- *
- * The target chat is the one the agent most recently sent to (any earlier
- * run), so the ping always lands in the conversation the user already reads.
- * Only fires when Telegram is part of the agent AND actually connected — and
- * never in demo mode, where no message could leave the app.
+ * Completed runs deliver their own deliverable through TELEGRAM_SEND_MESSAGE
+ * as part of the run (see the auto-delivery in `@/agent/engine/runner`), so
+ * there is intentionally no "run finished" message: the brief itself is the
+ * notification. Failures have no deliverable, so they still ping here.
  */
 
-const SUMMARY_MAX = 180;
-
-/** One clean line: drop the deliverable's own title line, strip markdown,
- *  and truncate on a word boundary with an ellipsis. */
 function plainSummary(value: string | null | undefined): string {
   if (!value) return "";
-  const withoutTitle = value.replace(/^\s*#.*\r?\n+/, "");
-  const stripped = withoutTitle
+  const stripped = value
     .replace(/[#>*_`|]|\!\[/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (stripped.length <= SUMMARY_MAX) return stripped;
-  const cut = stripped.slice(0, SUMMARY_MAX);
+  if (stripped.length <= 180) return stripped;
+  const cut = stripped.slice(0, 180);
   const lastSpace = cut.lastIndexOf(" ");
-  const body = lastSpace > SUMMARY_MAX * 0.6 ? cut.slice(0, lastSpace) : cut;
-  return `${body.trimEnd()}…`;
+  return `${(lastSpace > 108 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
 function formatDuration(ms: number): string {
@@ -44,19 +34,6 @@ function formatDuration(ms: number): string {
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   return `${minutes}m ${seconds % 60}s`;
-}
-
-function telegramChatIdFromSteps(steps: RunStep[] | null | undefined): string | null {
-  if (!Array.isArray(steps)) return null;
-  for (const step of [...steps].reverse()) {
-    if (step?.type !== "tool_result") continue;
-    if (step.toolSlug?.toUpperCase() !== "TELEGRAM_SEND_MESSAGE") continue;
-    const output = step.output as Record<string, unknown> | undefined;
-    const chatId = output?.chat_id;
-    if (typeof chatId === "string" && chatId.trim()) return chatId.trim();
-    if (typeof chatId === "number") return String(chatId);
-  }
-  return null;
 }
 
 export async function notifyRunFinished(input: {
@@ -68,9 +45,9 @@ export async function notifyRunFinished(input: {
   error?: string | null;
   durationMs?: number | null;
 }): Promise<void> {
-  // Cancelled runs are user-initiated; no ping needed. Demo mode cannot
-  // deliver anything (and must not pretend it did).
-  if (!input.userEmail || input.status === "cancelled") return;
+  // Only failures need a message — the deliverable is sent by the run itself.
+  if (input.status !== "failed") return;
+  if (!input.userEmail) return;
   if (integrationMode() !== "composio") return;
 
   const db = await getDb();
@@ -84,9 +61,8 @@ export async function notifyRunFinished(input: {
   if (!(agent.tools ?? []).includes("telegram")) return;
   if (!(await isToolConnected(input.userEmail, "telegram"))) return;
 
-  // Prefer the saved destination; fall back to the chat this agent last sent
-  // to and remember it, so notifications never depend on a send happening
-  // first in the very same run.
+  // Prefer the saved destination; fall back to the chat this agent last
+  // delivered to and remember it.
   let chatId = agent.telegramChatId?.trim() || null;
   if (!chatId) {
     const recent = await db
@@ -113,7 +89,7 @@ export async function notifyRunFinished(input: {
   }
   if (!chatId) {
     console.warn(
-      `[notify] telegram completion skipped for ${agent.agentId}: no chat id known yet — set one in the agent settings`,
+      `[notify] failure alert skipped for ${agent.agentId}: no chat id known yet — set one in the agent settings`,
     );
     return;
   }
@@ -126,16 +102,10 @@ export async function notifyRunFinished(input: {
   });
   if (!composio) return;
 
-  const headline =
-    input.status === "completed" ? "✅ Run finished" : "⚠️ Run failed";
-  const detail =
-    input.status === "failed"
-      ? plainSummary(input.error) || plainSummary(input.output)
-      : plainSummary(input.output);
   const elapsed = input.durationMs ? ` (${formatDuration(input.durationMs)})` : "";
   const text = [
-    `${headline} — ${agent.name ?? "Agent"}${elapsed}`,
-    detail || (input.status === "failed" ? "The run failed — check the run log." : "Deliverable ready."),
+    `⚠️ Run failed — ${agent.name ?? "Agent"}${elapsed}`,
+    plainSummary(input.error) || "The run failed — check the run log.",
     `${appUrl()}/dashboard/runs/${input.runId}`,
   ].join("\n");
 
@@ -145,7 +115,7 @@ export async function notifyRunFinished(input: {
   })) as { data?: { result?: { message_id?: unknown } } } | null;
 
   console.log(
-    `[notify] run ${input.runId} ${input.status}: telegram completion sent to ${chatId} (message ${
+    `[notify] run ${input.runId} failed: telegram alert sent to ${chatId} (message ${
       result?.data?.result?.message_id ?? "?"
     })`,
   );

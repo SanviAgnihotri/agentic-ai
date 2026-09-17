@@ -474,8 +474,7 @@ export function AgentConfigForm({
             className="max-w-xs"
           />
           <p className="text-xs text-muted-foreground">
-            Where the agent sends Telegram messages and where the
-            &ldquo;run finished&rdquo; notification goes. Message your bot once, then
+            Where the deliverable is sent for you. Message your bot once, then
             copy the chat ID from @userinfobot on Telegram.
           </p>
         </div>

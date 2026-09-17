@@ -7,6 +7,11 @@ import {
   listConnections,
 } from "@/agent/integrations";
 import { toolBySlug } from "@/agent/tools/catalog";
+import {
+  normalizeParseMode,
+  splitTelegramText,
+  toPlainText,
+} from "@/agent/tools/telegram";
 import { simulateTool } from "@/agent/tools/simulate";
 import type { LlmToolSpec } from "@/agent/ai/types";
 
@@ -230,15 +235,6 @@ const FALLBACK_PARAMETERS = z.object({
   input: z.string().describe("Task input for this action"),
 });
 
-function toolSlugForAction(actionName: string): string {
-  const upper = actionName.toUpperCase();
-  for (const tool of toolBySlug.values()) {
-    if (tool.provider !== "composio") continue;
-    const prefix = (tool.toolkit ?? tool.slug).replace(/[^a-z0-9]/gi, "").toUpperCase();
-    if (prefix && upper.startsWith(prefix)) return tool.slug;
-  }
-  return "composio";
-}
 
 /** High-value actions kept for every integration (keeps the LLM payload small). */
 const KEY_TOOL_PATTERNS: RegExp[] = [
@@ -341,55 +337,8 @@ function composioFailure(result: unknown): string | null {
 }
 
 /* ------------------------------------------------------------------ */
-/* Telegram delivery helpers                                            */
+/* Telegram delivery helpers (shared with the run-finished notifier)    */
 /* ------------------------------------------------------------------ */
-
-/** Telegram hard-caps messages at 4096 chars; stay well below for footers. */
-const TELEGRAM_MAX_CHARS = 3800;
-
-function normalizeParseMode(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "markdown") return "Markdown";
-  if (normalized === "markdownv2") return "MarkdownV2";
-  if (normalized === "html") return "HTML";
-  return undefined;
-}
-
-/**
- * Telegram only renders <b>/<i> markup when a parse_mode is active. Whenever a
- * message goes out as plain text (multi-part splits, formatting retries),
- * convert the markup to clean text so users never see raw tags.
- */
-function toPlainText(value: string): string {
-  return value
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|div|li|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function splitTelegramText(text: string): string[] {
-  const chunks: string[] = [];
-  let rest = text.trim();
-  while (rest.length > TELEGRAM_MAX_CHARS) {
-    const limit = TELEGRAM_MAX_CHARS;
-    let cut = rest.lastIndexOf("\n\n", limit);
-    if (cut < limit * 0.5) cut = rest.lastIndexOf("\n", limit);
-    if (cut < limit * 0.5) cut = rest.lastIndexOf(" ", limit);
-    if (cut < limit * 0.5) cut = limit;
-    chunks.push(rest.slice(0, cut).trimEnd());
-    rest = rest.slice(cut).trimStart();
-  }
-  if (rest) chunks.push(rest);
-  return chunks;
-}
 
 /* ------------------------------------------------------------------ */
 /* Toolset builder                                                      */
