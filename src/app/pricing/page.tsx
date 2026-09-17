@@ -84,15 +84,15 @@ export default async function PricingPage() {
             <Link href="/">Home</Link>
           </Button>
           {user ? (
-            <Button size="sm" className="rounded-full" asChild>
+            <Button size="sm" asChild>
               <Link href="/dashboard">Dashboard</Link>
             </Button>
           ) : (
             <>
-              <Button variant="ghost" size="sm" asChild className="rounded-full">
+              <Button variant="ghost" size="sm" asChild>
                 <Link href="/sign-in">Sign in</Link>
               </Button>
-              <Button size="sm" className="rounded-full" asChild>
+              <Button size="sm" asChild>
                 <Link href="/sign-in">Get started</Link>
               </Button>
             </>

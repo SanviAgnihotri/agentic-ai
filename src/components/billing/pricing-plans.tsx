@@ -151,7 +151,7 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
           </p>
           <Button
             variant="outline"
-            className="mt-6 h-10 w-full rounded-xl"
+            className="mt-6 h-10 w-full"
             onClick={() => router.push(signedIn ? "/dashboard" : "/sign-in")}
           >
             {signedIn ? "Open dashboard" : "Sign in"}
@@ -198,13 +198,13 @@ export function PricingPlans({ currentPlan, signedIn, billingReady }: PricingPla
                 : `${PRO_TRIAL_DAYS}-day free trial, then $${PRO_MONTHLY_PRICE}/month`}
             </p>
             {isPro ? (
-              <Button className="mt-6 h-10 w-full rounded-xl" onClick={openPortal} disabled={pending !== null}>
+              <Button className="mt-6 h-10 w-full" onClick={openPortal} disabled={pending !== null}>
                 {pending === "portal" ? <Loader2 className="size-4 animate-spin" /> : null}
                 Manage billing
               </Button>
             ) : (
               <Button
-                className="mt-6 h-10 w-full rounded-xl"
+                className="mt-6 h-10 w-full"
                 onClick={startCheckout}
                 disabled={pending !== null || !billingReady}
               >
