@@ -21,15 +21,29 @@ import { appUrl } from "@/lib/dodo";
  * never in demo mode, where no message could leave the app.
  */
 
-const SUMMARY_MAX = 160;
+const SUMMARY_MAX = 180;
 
+/** One clean line: drop the deliverable's own title line, strip markdown,
+ *  and truncate on a word boundary with an ellipsis. */
 function plainSummary(value: string | null | undefined): string {
   if (!value) return "";
-  return value
+  const withoutTitle = value.replace(/^\s*#.*\r?\n+/, "");
+  const stripped = withoutTitle
     .replace(/[#>*_`|]|\!\[/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, SUMMARY_MAX);
+    .trim();
+  if (stripped.length <= SUMMARY_MAX) return stripped;
+  const cut = stripped.slice(0, SUMMARY_MAX);
+  const lastSpace = cut.lastIndexOf(" ");
+  const body = lastSpace > SUMMARY_MAX * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return `${body.trimEnd()}…`;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
 }
 
 function telegramChatIdFromSteps(steps: RunStep[] | null | undefined): string | null {
@@ -52,6 +66,7 @@ export async function notifyRunFinished(input: {
   status: "completed" | "failed" | "cancelled";
   output?: string | null;
   error?: string | null;
+  durationMs?: number | null;
 }): Promise<void> {
   // Cancelled runs are user-initiated; no ping needed. Demo mode cannot
   // deliver anything (and must not pretend it did).
@@ -117,8 +132,9 @@ export async function notifyRunFinished(input: {
     input.status === "failed"
       ? plainSummary(input.error) || plainSummary(input.output)
       : plainSummary(input.output);
+  const elapsed = input.durationMs ? ` (${formatDuration(input.durationMs)})` : "";
   const text = [
-    `${headline} — ${agent.name ?? "Agent"}`,
+    `${headline} — ${agent.name ?? "Agent"}${elapsed}`,
     detail || (input.status === "failed" ? "The run failed — check the run log." : "Deliverable ready."),
     `${appUrl()}/dashboard/runs/${input.runId}`,
   ].join("\n");

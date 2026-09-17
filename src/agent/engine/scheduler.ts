@@ -239,6 +239,7 @@ export async function executeRunById(runId: number): Promise<void> {
       .set({ status: "running", startedAt: new Date() })
       .where(eq(schema.agentRun.id, runId));
 
+    const startedMs = Date.now();
     const result = await executeAgent({
       userEmail: run.userEmail ?? "",
       agent: agent as unknown as RunnerAgent,
@@ -284,6 +285,7 @@ export async function executeRunById(runId: number): Promise<void> {
       status: result.status,
       output: result.output,
       error: result.error,
+      durationMs: Date.now() - startedMs,
     }).catch((error) => {
       console.warn("[notify] telegram completion failed:", error);
     });
