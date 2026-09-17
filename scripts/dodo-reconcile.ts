@@ -40,11 +40,9 @@ let unchanged = 0;
 let skipped = 0;
 
 for await (const subscription of client.subscriptions.list({ page_size: 100 })) {
-  const email = (
-    subscription.metadata?.user_email ??
-    subscription.customer?.email ??
-    ""
-  ).toLowerCase();
+  const rawEmail =
+    subscription.metadata?.user_email ?? subscription.customer?.email ?? "";
+  const email = typeof rawEmail === "string" ? rawEmail.toLowerCase() : "";
   const label = `${subscription.subscription_id} ${email ? `<${email}>` : "(no email)"}`;
 
   if (!email) {
