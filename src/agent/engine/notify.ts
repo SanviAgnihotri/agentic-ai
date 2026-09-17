@@ -69,25 +69,39 @@ export async function notifyRunFinished(input: {
   if (!(agent.tools ?? []).includes("telegram")) return;
   if (!(await isToolConnected(input.userEmail, "telegram"))) return;
 
-  // Reuse the chat this agent last sent to. The current run is included, so a
-  // Telegram step earlier in this same run also counts.
-  const recent = await db
-    .select({ steps: schema.agentRun.steps })
-    .from(schema.agentRun)
-    .where(
-      and(
-        eq(schema.agentRun.agentId, input.agentId),
-        inArray(schema.agentRun.status, ["completed", "failed"]),
-      ),
-    )
-    .orderBy(desc(schema.agentRun.createdAt))
-    .limit(12);
-  let chatId: string | null = null;
-  for (const row of recent) {
-    chatId = telegramChatIdFromSteps(row.steps);
-    if (chatId) break;
+  // Prefer the saved destination; fall back to the chat this agent last sent
+  // to and remember it, so notifications never depend on a send happening
+  // first in the very same run.
+  let chatId = agent.telegramChatId?.trim() || null;
+  if (!chatId) {
+    const recent = await db
+      .select({ steps: schema.agentRun.steps })
+      .from(schema.agentRun)
+      .where(
+        and(
+          eq(schema.agentRun.agentId, input.agentId),
+          inArray(schema.agentRun.status, ["completed", "failed"]),
+        ),
+      )
+      .orderBy(desc(schema.agentRun.createdAt))
+      .limit(12);
+    for (const row of recent) {
+      chatId = telegramChatIdFromSteps(row.steps);
+      if (chatId) break;
+    }
+    if (chatId) {
+      await db
+        .update(schema.agentConfig)
+        .set({ telegramChatId: chatId, updatedAt: new Date() })
+        .where(eq(schema.agentConfig.id, agent.id));
+    }
   }
-  if (!chatId) return;
+  if (!chatId) {
+    console.warn(
+      `[notify] telegram completion skipped for ${agent.agentId}: no chat id known yet — set one in the agent settings`,
+    );
+    return;
+  }
 
   const composio = await getComposioAgentTools({
     userEmail: input.userEmail,
@@ -109,5 +123,14 @@ export async function notifyRunFinished(input: {
     `${appUrl()}/dashboard/runs/${input.runId}`,
   ].join("\n");
 
-  await composio.execute("TELEGRAM_SEND_MESSAGE", { chat_id: chatId, text });
+  const result = (await composio.execute("TELEGRAM_SEND_MESSAGE", {
+    chat_id: chatId,
+    text,
+  })) as { data?: { result?: { message_id?: unknown } } } | null;
+
+  console.log(
+    `[notify] run ${input.runId} ${input.status}: telegram completion sent to ${chatId} (message ${
+      result?.data?.result?.message_id ?? "?"
+    })`,
+  );
 }

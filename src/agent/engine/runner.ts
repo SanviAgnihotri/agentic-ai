@@ -18,6 +18,7 @@ export interface RunnerAgent {
   outputFormat?: string | null;
   tools?: string[] | null;
   composioSessionId?: string | null;
+  telegramChatId?: string | null;
 }
 
 export interface RunnerResult {
@@ -145,6 +146,14 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
         `NOT connected: ${toolset.missingTools
           .map((tool) => tool.name)
           .join(", ")}. Their tools are unavailable. Do not fabricate results for them. If the objective depends on one, complete the rest of the work and clearly tell the user to connect it on the Integrations page.`,
+      );
+    }
+    if (
+      options.agent.telegramChatId &&
+      toolset.connectedTools.some((tool) => tool.slug === "telegram")
+    ) {
+      integrationRules.push(
+        `Telegram chat id for notifications: ${options.agent.telegramChatId}. Always pass this exact chat_id to TELEGRAM_SEND_MESSAGE — never guess or invent one.`,
       );
     }
     const integrationContext = integrationRules.join("\n");

@@ -1,0 +1,1 @@
+ALTER TABLE "agent_config" ADD COLUMN "telegram_chat_id" varchar(64);

@@ -43,6 +43,13 @@
       "when": 1789155758537,
       "tag": "0005_thankful_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789683151642,
+      "tag": "0006_soft_gorilla_man",
+      "breakpoints": true
     }
   ]
 }

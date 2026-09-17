@@ -46,6 +46,7 @@ const patchSchema = z.object({
   tools: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
   outputFormat: z.string().optional(),
+  telegramChatId: z.string().max(64).nullable().optional(),
   status: z.enum(["active", "paused"]).optional(),
   schedule: z
     .object({

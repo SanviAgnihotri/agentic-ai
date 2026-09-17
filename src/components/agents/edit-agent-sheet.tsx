@@ -58,6 +58,7 @@ export function EditAgentSheet({
       skills: agent.skills ?? [],
       schedule: agent.schedule ?? { type: "manual", time: "09:00" },
       outputFormat: agent.outputFormat ?? "",
+      telegramChatId: agent.telegramChatId ?? "",
       agentImage: agent.agentImage ?? undefined,
       status: agent.status ?? "active",
     };
@@ -111,6 +112,7 @@ export function EditAgentSheet({
           skills: draft.skills,
           schedule: draft.schedule,
           outputFormat: draft.outputFormat,
+          telegramChatId: draft.telegramChatId?.trim() || null,
           agentImage: draft.agentImage,
         },
       });

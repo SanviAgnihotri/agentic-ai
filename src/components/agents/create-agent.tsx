@@ -51,6 +51,7 @@ export interface AgentRow {
   outputFormat: string | null;
   status: string | null;
   composioSessionId: string | null;
+  telegramChatId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -131,6 +132,7 @@ export function CreateAgent({
     skills: row.skills ?? [],
     schedule: row.schedule ?? { type: "manual", time: "09:00" },
     outputFormat: row.outputFormat ?? "",
+    telegramChatId: row.telegramChatId ?? "",
     agentImage: row.agentImage ?? undefined,
     status: row.status ?? "active",
   });
@@ -226,6 +228,7 @@ export function CreateAgent({
           skills: draft.skills,
           schedule: draft.schedule,
           outputFormat: draft.outputFormat,
+          telegramChatId: draft.telegramChatId?.trim() || null,
           agentImage: draft.agentImage,
         },
       });

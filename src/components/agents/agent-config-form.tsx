@@ -38,6 +38,7 @@ export interface AgentDraft {
   skills: string[];
   schedule: ScheduleConfig;
   outputFormat: string;
+  telegramChatId?: string;
   agentImage?: string;
   status?: string;
 }
@@ -458,6 +459,27 @@ export function AgentConfigForm({
           className={compact ? "min-h-[60px]" : "min-h-[80px]"}
         />
       </div>
+
+      {draft.tools.includes("telegram") && (
+        <div className="space-y-2">
+          <Label htmlFor="telegram-chat-id">Telegram chat ID</Label>
+          <Input
+            id="telegram-chat-id"
+            value={draft.telegramChatId ?? ""}
+            onChange={(event) => update({ telegramChatId: event.target.value })}
+            name="telegram-chat-id"
+            autoComplete="off"
+            inputMode="numeric"
+            placeholder="e.g. 7979789225"
+            className="max-w-xs"
+          />
+          <p className="text-xs text-muted-foreground">
+            Where the agent sends Telegram messages and where the
+            &ldquo;run finished&rdquo; notification goes. Message your bot once, then
+            copy the chat ID from @userinfobot on Telegram.
+          </p>
+        </div>
+      )}
 
       {draft.schedule?.type === "recurring" && (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 p-3 text-xs text-emerald-700 dark:text-emerald-400">

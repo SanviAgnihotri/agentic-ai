@@ -86,6 +86,9 @@ export const agentConfig = pgTable(
     maxSteps: integer("max_steps").default(8),
     status: varchar("status", { length: 32 }).default("active"),
     composioSessionId: varchar("composio_session_id", { length: 255 }).default(""),
+    // Telegram destination for agent sends and run-finished notifications.
+    // Learned from the first successful send, or set by hand in the form.
+    telegramChatId: varchar("telegram_chat_id", { length: 64 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

@@ -16,6 +16,7 @@ export interface AgentUpdateInput {
   tools?: string[];
   skills?: string[];
   outputFormat?: string;
+  telegramChatId?: string | null;
   status?: "active" | "paused";
   schedule?: ScheduleConfig;
 }
