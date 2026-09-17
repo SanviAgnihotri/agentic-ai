@@ -11,7 +11,18 @@ export function Markdown({
 }) {
   return (
     <div className={cn("md-prose", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        // Authored deliverables use `#` for titles; demote to h2 so rendered
+        // markdown never competes with the page's h1 or skips a level.
+        components={{
+          h1: (props) => <h2 {...props} />,
+          h2: (props) => <h3 {...props} />,
+          h3: (props) => <h4 {...props} />,
+        }}
+      >
+        {children}
+      </ReactMarkdown>
     </div>
   );
 }

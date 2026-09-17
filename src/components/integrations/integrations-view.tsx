@@ -160,7 +160,10 @@ export function IntegrationsView() {
       </div>
 
       {data?.warning && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-400">
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-400"
+        >
           <ShieldOff className="mt-0.5 size-4 shrink-0" />
           <div>
             <p className="font-medium">Composio is not connected</p>

@@ -3,9 +3,8 @@
 Full-app review (14 pages, ~57 components). Legend: `[ ]` open · `[x]` fixed.
 Batches: **B1** behavior/UX · **B2** accessibility · **B3** design-system & copy · **B4** infrastructure.
 
-> Status: B1 essentially done (one create-agent guard left). B2 partially done
-> (link semantics, runs/integrations labels, progress names, timeline live
-> region) — the rest of B2, plus B3 and B4, remain.
+> Status: B1 and B2 done. B3 and B4 remain (Intl date/number helpers,
+> design-system leftovers, infra pages like not-found/error).
 
 ## B1 — Behavior / UX
 
@@ -28,22 +27,16 @@ Batches: **B1** behavior/UX · **B2** accessibility · **B3** design-system & co
 
 ## B2 — Accessibility
 
-- [x] Navigation via buttons/divs instead of links (no Cmd/middle-click, no href):
-      dashboard cards/rows/quick actions, runs rows, templates, sidebar, header,
-      agent-card menu, pricing CTA — all real `<Link>`s now
-- [x] Stat cards keyboard-inaccessible — now links with visible focus ring
-- [ ] No skip link anywhere; sticky header overlaps anchors (no `scroll-mt-*`) — `app/page.tsx:225,252`, `app-header.tsx:85`
-- [ ] Unlabeled controls (remaining): my-agents search/status `my-agents.tsx:86-102`; chat textarea + send `agent-chat.tsx:191,204`;
-      agent-config-form schedule/time/frequency/day/date/skills/tools `agent-config-form.tsx:170-251,269-303,407-415`;
-      create-agent textarea/submit `create-agent.tsx:386-410` (runs + integrations search/filter now labeled)
-- [ ] Chat textarea placeholder-only (no label) — `agent-chat.tsx:191`
-- [x] Progress bars without accessible name — billing, dashboard, sidebar all labeled
-- [ ] Async updates not announced (`aria-live`): chat replies `agent-chat.tsx:109-157`; wizard steps `clarification-wizard.tsx:88`; integrations warning `integrations-view.tsx:162-172`; create-agent status `create-agent.tsx:287-290` (run timeline done)
-- [ ] Form error not `role="alert"`, not linked to fields, no focus move — `better-auth-form.tsx:186`
-- [ ] Clarification options lack `aria-pressed`/radio semantics + group label — `clarification-wizard.tsx:112-133`
-- [ ] TabsContent `outline-none` without focus replacement — `agents-view.tsx:64`
-- [ ] Heading order: AuthShell h2 before page h1 `auth-shell.tsx:30`; tab views without h1 `my-agents.tsx:19-79`, `create-agent.tsx:287,320`; EmptyState h3 skips h2 `empty-state.tsx:28`; markdown can inject extra h1s `shared/markdown.tsx:13-15`
-- [ ] Disabled Disconnect explanation only in `title` (never shown; disabled buttons unfocusable) — `connected-accounts.tsx:158`
+- [x] Navigation via buttons/divs instead of links — all real `<Link>`s now
+- [x] Stat cards keyboard-inaccessible — links with visible focus ring
+- [x] Skip link + sticky-header overlap — root-layout skip link, `#main-content` on every page, global `scroll-padding-top`
+- [x] Unlabeled controls — runs/integrations/my-agents search+selects, chat textarea+send, config-form schedule/time/frequency/day/date/skills/tools, create-agent composer+submit, icon-only buttons all labeled; inputs gained `name` + `autocomplete="off"`
+- [x] Progress bars without accessible name — billing, dashboard, sidebar, wizard all labeled
+- [x] Async updates announced — chat log `role="log"`, timeline, wizard step, integrations warning, create-agent status; auth form errors `role="alert"`
+- [x] Clarification options — radio/checkbox semantics + `aria-checked`
+- [x] TabsContent focus replacement ring
+- [x] Heading order — AuthShell panel demoted, EmptyState h2, sr-only h1s in tab phases, markdown h1→h2 demotion
+- [x] Disabled Disconnect explanation is visible copy ("Only sign-in method")
 
 ## B3 — Design system & copy
 

@@ -152,6 +152,8 @@
     @apply font-sans;
     font-feature-settings: "kern", "liga";
     text-rendering: optimizeLegibility;
+    /* Keep anchored/focused elements clear of the sticky app header. */
+    scroll-padding-top: 4.5rem;
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 20%, transparent);

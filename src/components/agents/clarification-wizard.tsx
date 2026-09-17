@@ -84,7 +84,7 @@ export function ClarificationWizard({
             <p className="text-sm font-medium">
               The planner needs a little more detail
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground" aria-live="polite">
               Question {index + 1} of {questions.length}
             </p>
           </div>
@@ -93,7 +93,11 @@ export function ClarificationWizard({
           </Badge>
         </div>
 
-        <Progress value={((index + 1) / questions.length) * 100} className="h-1.5" />
+        <Progress
+          value={((index + 1) / questions.length) * 100}
+          aria-label={`Question ${index + 1} of ${questions.length}`}
+          className="h-1.5"
+        />
 
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">{question.question}</h2>
@@ -105,16 +109,22 @@ export function ClarificationWizard({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div
+          className="space-y-2"
+          role={question.type === "multi_select" ? "group" : "radiogroup"}
+          aria-label={question.question}
+        >
           {question.options?.map((option) => {
             const active = selected.includes(option);
             return (
               <button
                 key={option}
                 type="button"
+                role={question.type === "multi_select" ? "checkbox" : "radio"}
+                aria-checked={active}
                 onClick={() => toggleOption(option)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-xl border p-3.5 text-left text-sm transition",
+                  "flex w-full items-center gap-3 rounded-xl border p-3.5 text-left text-sm transition focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
                   active
                     ? "border-primary/50 bg-primary/8 text-foreground"
                     : "border-border/70 bg-muted/20 hover:border-primary/30 hover:bg-muted/40",
@@ -137,10 +147,14 @@ export function ClarificationWizard({
 
         {(question.type === "text" || question.allowCustom) && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
+            <label
+              htmlFor={`custom-${question.id}`}
+              className="text-xs font-medium text-muted-foreground"
+            >
               {question.type === "text" ? "Your answer" : "Or write your own"}
             </label>
             <Input
+              id={`custom-${question.id}`}
               value={custom[question.id] ?? ""}
               onChange={(event) => setCustomValue(event.target.value)}
               placeholder={question.customPlaceholder ?? "Type your answer…"}

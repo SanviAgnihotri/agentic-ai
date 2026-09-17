@@ -11,6 +11,17 @@ import {
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useReducedMotion } from "motion/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -73,11 +84,17 @@ export function CreateAgent({
   const [questions, setQuestions] = useState<ClarificationQuestion[]>([]);
   const [agent, setAgent] = useState<AgentRow | null>(null);
   const [draft, setDraft] = useState<AgentDraft | null>(null);
+  const [draftBaseline, setDraftBaseline] = useState<string | null>(null);
+  const [confirmLeave, setConfirmLeave] = useState<"new" | "view" | null>(null);
   const [connections, setConnections] = useState<ToolConnectionInfo[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const reducedMotion = useReducedMotion();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const draftDirty =
+    draft !== null && draftBaseline !== null && JSON.stringify(draft) !== draftBaseline;
 
   const timeZone =
     typeof Intl !== "undefined"
@@ -119,8 +136,10 @@ export function CreateAgent({
   });
 
   const handleReady = (row: AgentRow) => {
+    const nextDraft = toDraft(row);
     setAgent(row);
-    setDraft(toDraft(row));
+    setDraft(nextDraft);
+    setDraftBaseline(JSON.stringify(nextDraft));
     setPhase("ready");
     void loadConnections(row.agentId);
     onCreated?.(row);
@@ -256,13 +275,30 @@ export function CreateAgent({
     setPhase("idle");
     setAgent(null);
     setDraft(null);
+    setDraftBaseline(null);
+    setConfirmLeave(null);
     setQuestions([]);
     setPrompt("");
+  };
+
+  // Ready-phase exits guard unsaved config edits.
+  const leaveReady = (target: "new" | "view") => {
+    if (draftDirty) {
+      setConfirmLeave(target);
+      return;
+    }
+    if (target === "new") {
+      reset();
+      return;
+    }
+    if (agent) onCreated?.(agent);
+    onViewMyAgents?.();
   };
 
   if (phase === "clarifying" && questions.length > 0) {
     return (
       <div ref={scrollRef}>
+        <h1 className="sr-only">Create a new agent</h1>
         <ClarificationWizard
           questions={questions}
           onComplete={completeClarification}
@@ -276,16 +312,17 @@ export function CreateAgent({
   if (phase === "generating") {
     return (
       <Card className="mx-auto w-full max-w-2xl">
+        <h1 className="sr-only">Create a new agent</h1>
         <CardContent className="flex flex-col items-center gap-6 p-10 text-center">
           <div className="relative">
-            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20 motion-reduce:animate-none" />
             <div className="relative flex size-16 items-center justify-center rounded-full bg-muted">
               <Wand2 className="size-7 text-primary" />
             </div>
           </div>
           <div className="space-y-1">
             <h2 className="text-lg font-semibold">Generating your agent</h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground" aria-live="polite">
               {GENERATING_STEPS[stepIndex]}
             </p>
           </div>
@@ -307,6 +344,7 @@ export function CreateAgent({
   if (phase === "ready" && draft && agent) {
     return (
       <div className="mx-auto w-full max-w-4xl space-y-6">
+        <h1 className="sr-only">Create a new agent</h1>
         <Card className="border-emerald-500/20 bg-emerald-500/5">
           <CardContent className="flex flex-wrap items-center gap-4 p-5">
             <Avatar className="size-14 rounded-xl border border-border">
@@ -345,18 +383,12 @@ export function CreateAgent({
         </Card>
 
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
-          <Button variant="ghost" className="gap-2" onClick={reset}>
+          <Button variant="ghost" className="gap-2" onClick={() => leaveReady("new")}>
             <RotateCcw className="size-4" />
             Create another
           </Button>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onCreated?.(agent);
-                onViewMyAgents?.();
-              }}
-            >
+            <Button variant="outline" onClick={() => leaveReady("view")}>
               View in My Agents
             </Button>
             <Button className="gap-2" onClick={saveChanges} disabled={saving}>
@@ -365,6 +397,40 @@ export function CreateAgent({
             </Button>
           </div>
         </div>
+
+        <AlertDialog
+          open={confirmLeave !== null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmLeave(null);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your edits to {draft.name} haven’t been saved. Save the agent first
+                to keep them.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep editing</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={() => {
+                  const target = confirmLeave;
+                  setConfirmLeave(null);
+                  if (target === "new") reset();
+                  else {
+                    onCreated?.(agent);
+                    onViewMyAgents?.();
+                  }
+                }}
+              >
+                Discard changes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -392,13 +458,17 @@ export function CreateAgent({
               void submitPrompt();
             }
           }}
-          placeholder="e.g. Find the top 5 trending AI topics on Reddit, summarize them into a Google Doc and notify me on Slack every day at 8am."
+          name="prompt"
+          aria-label="Describe the agent you want"
+          autoComplete="off"
+          placeholder="e.g. Find the top 5 trending AI topics on Reddit, summarize them into a Google Doc and notify me on Slack every day at 8am…"
           className="min-h-[120px] w-full resize-none bg-transparent p-4 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/70"
         />
         <div className="flex items-center justify-end gap-2 px-3 pb-2">
           <Button
             size="icon"
             className="size-9 rounded-full bg-primary"
+            aria-label="Create agent from this description"
             onClick={() => void submitPrompt()}
             disabled={submitting}
           >
@@ -445,7 +515,10 @@ export function CreateAgent({
                 key={template.id}
                 onClick={() => {
                   setPrompt(template.prompt);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  window.scrollTo({
+                    top: 0,
+                    behavior: reducedMotion ? "auto" : "smooth",
+                  });
                 }}
                 className={`group rounded-xl border border-border/70 bg-card p-5 text-left transition-colors hover:border-foreground/15 `}
               >

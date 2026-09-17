@@ -27,11 +27,11 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
             <Sparkles className="size-3.5 text-primary" />
             Your autonomous agent workforce
           </div>
-          <h2 className="max-w-md text-3xl font-semibold leading-tight text-white">
+          <p className="max-w-md text-3xl font-semibold leading-tight text-white">
             Stop doing recurring work.
             <br />
             <span className="text-white/60">Start managing agents that do it.</span>
-          </h2>
+          </p>
           <ul className="space-y-3">
             {POINTS.map((point) => (
               <li key={point} className="flex items-start gap-3 text-sm text-white/75">
@@ -44,23 +44,23 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
 
         <div className="relative flex items-center gap-6 text-white/50">
           <div>
-            <p className="text-2xl font-semibold text-white">5 min</p>
+            <p className="text-2xl font-semibold tabular-nums text-white">5 min</p>
             <p className="text-xs">to your first agent</p>
           </div>
           <div className="h-8 w-px bg-white/15" />
           <div>
-            <p className="text-2xl font-semibold text-white">100+</p>
+            <p className="text-2xl font-semibold tabular-nums text-white">100+</p>
             <p className="text-xs">app integrations</p>
           </div>
           <div className="h-8 w-px bg-white/15" />
           <div>
-            <p className="text-2xl font-semibold text-white">24/7</p>
+            <p className="text-2xl font-semibold tabular-nums text-white">24/7</p>
             <p className="text-xs">scheduled execution</p>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <main id="main-content" className="flex items-center justify-center p-6 sm:p-10">
         <div className="flex w-full max-w-md flex-col items-center gap-8">
           <Link href="/" className="flex items-center gap-2 lg:hidden">
             <Image src="/logo.svg" alt="Groovy AI" width={32} height={32} />
@@ -68,7 +68,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           </Link>
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, Send, Sparkles } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/shared/markdown";
 import { apiFetch } from "@/hooks/use-poll";
@@ -37,6 +39,7 @@ export function AgentChat({
   const [input, setInput] = useState("");
   const [replying, setReplying] = useState(false);
   const [loading, setLoading] = useState(true);
+  const reducedMotion = useReducedMotion();
   const endRef = useRef<HTMLDivElement>(null);
 
   const loadHistory = useCallback(async (agentId: string) => {
@@ -67,8 +70,11 @@ export function AgentChat({
   }, [agent.agentId, loadHistory]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, replying]);
+    endRef.current?.scrollIntoView({
+      behavior: reducedMotion ? "auto" : "smooth",
+      block: "end",
+    });
+  }, [messages, replying, reducedMotion]);
 
   const send = async (value: string) => {
     const text = value.trim();
@@ -94,9 +100,10 @@ export function AgentChat({
         {
           id: `error-${Date.now()}`,
           role: "assistant",
-          content: `⚠️ ${
-            error instanceof Error ? error.message : "I could not complete that request."
-          }`,
+          content:
+            error instanceof Error
+              ? `${error.message} — try sending it again.`
+              : "I could not complete that request. Try sending it again.",
         },
       ]);
     } finally {
@@ -106,10 +113,26 @@ export function AgentChat({
 
   return (
     <div className={cn("flex flex-col", className)}>
-      <div className="flex-1 space-y-5 overflow-y-auto px-1 py-4">
+      <div
+        className="flex-1 space-y-5 overflow-y-auto px-1 py-4"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        aria-label={`Chat with ${agent.name}`}
+      >
         {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <div className="space-y-4" aria-hidden="true">
+            <div className="flex gap-3">
+              <Skeleton className="size-7 shrink-0 rounded-lg" />
+              <Skeleton className="h-16 w-2/3 rounded-xl" />
+            </div>
+            <div className="flex flex-row-reverse gap-3">
+              <Skeleton className="h-10 w-1/2 rounded-xl" />
+            </div>
+            <div className="flex gap-3">
+              <Skeleton className="size-7 shrink-0 rounded-lg" />
+              <Skeleton className="h-20 w-3/5 rounded-xl" />
+            </div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-10 text-center">
@@ -149,7 +172,7 @@ export function AgentChat({
                 {message.role === "assistant" ? (
                   <Markdown>{message.content}</Markdown>
                 ) : (
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <p className="whitespace-pre-wrap break-words">{message.content}</p>
                 )}
               </div>
             </div>
@@ -163,9 +186,9 @@ export function AgentChat({
               </AvatarFallback>
             </Avatar>
             <div className="flex items-center gap-1 rounded-xl rounded-tl-sm border border-border/70 bg-muted/30 px-4 py-3">
-              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.3s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/70 [animation-delay:-0.15s]" />
-              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/70" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
             </div>
           </div>
         )}
@@ -197,6 +220,9 @@ export function AgentChat({
               void send(input);
             }
           }}
+          name="message"
+          aria-label={`Message ${agent.name}`}
+          autoComplete="off"
           placeholder={`Ask ${agent.name} anything…`}
           className="min-h-[52px] resize-none pr-12"
           disabled={replying}
@@ -204,6 +230,7 @@ export function AgentChat({
         <Button
           size="icon"
           className="absolute right-2 bottom-2 size-8 rounded-full"
+          aria-label="Send message"
           onClick={() => void send(input)}
           disabled={replying || !input.trim()}
         >

@@ -161,18 +161,18 @@ export function ConnectedAccounts({
                 {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Plug className="size-3.5" />}
                 Connect
               </Button>
+            ) : isLastAccount ? (
+              <span className="text-xs text-muted-foreground">
+                Only sign-in method
+              </span>
             ) : (
               <Button
                 variant="ghost"
                 size="sm"
                 className="gap-1.5 text-muted-foreground"
-                disabled={busy !== null || isLastAccount}
+                disabled={busy !== null}
                 aria-label={`Disconnect ${PROVIDER_LABEL[account.providerId]}`}
-                title={
-                  isLastAccount
-                    ? "You can’t disconnect your only sign-in method"
-                    : `Disconnect ${PROVIDER_LABEL[account.providerId]}`
-                }
+                title={`Disconnect ${PROVIDER_LABEL[account.providerId]}`}
                 onClick={() => setConfirmAccount(account)}
               >
                 {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Unplug className="size-3.5" />}

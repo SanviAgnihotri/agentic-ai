@@ -10,7 +10,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="min-w-0">
+      <SidebarInset id="main-content" className="min-w-0">
         <AppHeader />
         <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
       </SidebarInset>

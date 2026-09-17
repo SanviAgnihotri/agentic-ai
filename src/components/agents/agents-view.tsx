@@ -43,17 +43,17 @@ export function AgentsView() {
     <div className="space-y-6">
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <div className="flex items-center justify-center">
-          <TabsList className="h-11 rounded-full border border-border/70 bg-muted/40 p-1">
+          <TabsList className="h-11 rounded-lg border border-border/70 bg-muted/40 p-1">
             <TabsTrigger
               value="create"
-              className="gap-2 rounded-full px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="gap-2 rounded-md px-5 data-[state=active]:bg-background"
             >
               <Sparkles className="size-4" />
               Create agent
             </TabsTrigger>
             <TabsTrigger
               value="mine"
-              className="gap-2 rounded-full px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              className="gap-2 rounded-md px-5 data-[state=active]:bg-background"
             >
               <Bot className="size-4" />
               My agents
@@ -61,14 +61,20 @@ export function AgentsView() {
           </TabsList>
         </div>
 
-        <TabsContent value="create" className="mt-8 focus-visible:outline-none">
+        <TabsContent
+          value="create"
+          className="mt-8 rounded-xl focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
           <CreateAgent
             initialPrompt={promptParam}
             onCreated={handleCreated}
             onViewMyAgents={handleViewMyAgents}
           />
         </TabsContent>
-        <TabsContent value="mine" className="mt-6 focus-visible:outline-none">
+        <TabsContent
+          value="mine"
+          className="mt-6 rounded-xl focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+        >
           <MyAgents
             refreshKey={refreshKey}
             onCreate={() => setTab("create")}

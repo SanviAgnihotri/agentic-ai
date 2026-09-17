@@ -123,6 +123,8 @@ export function AgentConfigForm({
               id="agent-name"
               value={draft.name}
               onChange={(event) => update({ name: event.target.value })}
+              name="agent-name"
+              autoComplete="off"
               placeholder="Reddit Trend Radar"
             />
           </div>
@@ -132,6 +134,8 @@ export function AgentConfigForm({
               id="agent-description"
               value={draft.description}
               onChange={(event) => update({ description: event.target.value })}
+              name="agent-description"
+              autoComplete="off"
               placeholder="One sentence a non-technical teammate understands"
               className="min-h-[60px] resize-none"
             />
@@ -149,6 +153,8 @@ export function AgentConfigForm({
             id="agent-objective"
             value={draft.objective}
             onChange={(event) => update({ objective: event.target.value })}
+            name="agent-objective"
+            autoComplete="off"
             placeholder="The measurable outcome of every run"
             className="min-h-[120px]"
           />
@@ -159,6 +165,8 @@ export function AgentConfigForm({
             id="agent-instructions"
             value={draft.instructions}
             onChange={(event) => update({ instructions: event.target.value })}
+            name="agent-instructions"
+            autoComplete="off"
             placeholder="Numbered steps the agent follows"
             className="min-h-[120px] font-mono text-xs leading-relaxed"
           />
@@ -166,8 +174,8 @@ export function AgentConfigForm({
       </div>
 
       {/* Schedule */}
-      <div className="space-y-3">
-        <Label>Schedule</Label>
+      <div className="space-y-3" role="group" aria-labelledby="schedule-label">
+        <Label id="schedule-label">Schedule</Label>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select
             value={schedule.type}
@@ -179,7 +187,7 @@ export function AgentConfigForm({
               })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="Schedule type">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -194,6 +202,8 @@ export function AgentConfigForm({
               type="time"
               value={schedule.time}
               onChange={(event) => setSchedule({ time: event.target.value })}
+              name="schedule-time"
+              aria-label="Run time"
             />
           )}
 
@@ -206,7 +216,7 @@ export function AgentConfigForm({
                 })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Frequency">
                 <SelectValue placeholder="Frequency" />
               </SelectTrigger>
               <SelectContent>
@@ -223,7 +233,7 @@ export function AgentConfigForm({
               value={String(schedule.dayOfWeek ?? 1)}
               onValueChange={(value) => setSchedule({ dayOfWeek: Number(value) })}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Day of week">
                 <SelectValue placeholder="Day" />
               </SelectTrigger>
               <SelectContent>
@@ -247,6 +257,8 @@ export function AgentConfigForm({
               onChange={(event) =>
                 setSchedule({ dayOfMonth: Number(event.target.value) || 1 })
               }
+              name="day-of-month"
+              aria-label="Day of month"
               placeholder="Day of month"
             />
           )}
@@ -256,6 +268,8 @@ export function AgentConfigForm({
               type="date"
               value={schedule.date ?? ""}
               onChange={(event) => setSchedule({ date: event.target.value })}
+              name="run-date"
+              aria-label="Run date"
             />
           )}
         </div>
@@ -266,7 +280,7 @@ export function AgentConfigForm({
 
       {/* Skills */}
       <div className="space-y-3">
-        <Label>Skills</Label>
+        <Label htmlFor="agent-skill-input">Skills</Label>
         <div className="flex flex-wrap gap-2">
           {draft.skills.map((skill) => (
             <Badge
@@ -277,7 +291,8 @@ export function AgentConfigForm({
               {skill}
               <button
                 type="button"
-                className="rounded-full p-0.5 transition hover:bg-background/60"
+                className="rounded-full p-0.5 transition hover:bg-background/60 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+                aria-label={`Remove skill ${skill}`}
                 onClick={() => update({ skills: draft.skills.filter((s) => s !== skill) })}
               >
                 <X className="size-3" />
@@ -287,6 +302,7 @@ export function AgentConfigForm({
         </div>
         <div className="flex gap-2">
           <Input
+            id="agent-skill-input"
             value={skillInput}
             onChange={(event) => setSkillInput(event.target.value)}
             onKeyDown={(event) => {
@@ -295,10 +311,19 @@ export function AgentConfigForm({
                 addSkill();
               }
             }}
-            placeholder="Add a skill (press Enter)"
+            name="skill"
+            autoComplete="off"
+            placeholder="Add a skill…"
             className="h-9"
           />
-          <Button type="button" variant="outline" size="sm" className="h-9" onClick={addSkill}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9"
+            aria-label="Add skill"
+            onClick={addSkill}
+          >
             <Plus className="size-4" />
           </Button>
         </div>
@@ -307,10 +332,10 @@ export function AgentConfigForm({
       {/* Tools */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-1.5">
+          <p className="flex items-center gap-1.5 text-sm font-medium leading-none select-none">
             <Wrench className="size-3.5" />
             Connected tools
-          </Label>
+          </p>
           <Button
             type="button"
             variant="outline"
@@ -341,13 +366,13 @@ export function AgentConfigForm({
                 >
                   <ToolIcon name={tool.icon} slug={tool.slug} color={tool.color} className="size-3.5" />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{tool.name}</p>
                   <p className="line-clamp-1 text-xs text-muted-foreground">
                     {tool.description}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-[11px]">
                   {tool.requiresAuth ? "OAuth" : "Built-in"}
                 </Badge>
               </button>
@@ -409,6 +434,7 @@ export function AgentConfigForm({
                   variant="ghost"
                   size="icon"
                   className="size-7 text-muted-foreground"
+                  aria-label={`Remove ${tool.name}`}
                   onClick={() => update({ tools: draft.tools.filter((t) => t !== slug) })}
                 >
                   <X className="size-3.5" />
@@ -426,6 +452,8 @@ export function AgentConfigForm({
           id="agent-output"
           value={draft.outputFormat}
           onChange={(event) => update({ outputFormat: event.target.value })}
+          name="agent-output"
+          autoComplete="off"
           placeholder="How the final deliverable should look"
           className={compact ? "min-h-[60px]" : "min-h-[80px]"}
         />

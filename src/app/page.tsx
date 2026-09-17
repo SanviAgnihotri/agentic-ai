@@ -101,7 +101,7 @@ export default async function LandingPage() {
         </div>
       </header>
 
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         {/* Hero — type-led, the product is the imagery */}
         <section className="relative overflow-hidden">
           <div className="pointer-events-none absolute -top-40 left-1/2 h-[380px] w-[720px] -translate-x-1/2 rounded-full bg-primary/8 blur-[120px]" />

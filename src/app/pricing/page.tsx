@@ -100,7 +100,7 @@ export default async function PricingPage() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24">
+      <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-6 pb-24">
         {/* Hero */}
         <section className="mx-auto max-w-3xl pt-12 text-center sm:pt-16">
           <Badge variant="secondary" className="rounded-full px-3 py-1">
