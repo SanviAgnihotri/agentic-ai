@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   Activity,
   ArrowRight,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { CountUp } from "@/components/motion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { apiFetch, usePoll } from "@/hooks/use-poll";
-import { absoluteTime, relativeTime, shortDateTime } from "@/lib/format";
+import { relativeTime, shortDateTime } from "@/lib/format";
 
 interface DashboardRun {
   id: number;
@@ -81,8 +79,7 @@ export function DashboardView({
 }: {
   initialData?: DashboardData;
 }) {
-  const router = useRouter();
-  const { data, loading, refresh } = usePoll<DashboardData>(
+  const { data, error, loading, refresh } = usePoll<DashboardData>(
     () => apiFetch<DashboardData>("/api/dashboard"),
     30_000,
     [],
@@ -93,19 +90,43 @@ export function DashboardView({
     () =>
       (data?.activity ?? []).map((entry) => ({
         ...entry,
-        label: new Date(entry.day).toLocaleDateString("en", { weekday: "short" }),
+        // Explicit UTC keeps the weekday stable between SSR and hydration.
+        label: new Intl.DateTimeFormat("en", {
+          weekday: "short",
+          timeZone: "UTC",
+        }).format(new Date(entry.day)),
       })),
     [data?.activity],
   );
 
+  if (error && !data) {
+    return (
+      <Card className="border-destructive/30">
+        <CardContent className="flex flex-col items-center gap-3 p-8 text-center">
+          <XCircle className="size-5 text-destructive" />
+          <div>
+            <p className="font-medium">Couldn’t load your dashboard</p>
+            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => void refresh()}>
+            Try again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading && !data) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-28 w-full rounded-xl" />
+      <div className="space-y-6" aria-busy="true">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-32 rounded-xl" />
+            <Skeleton key={index} className="h-28 rounded-xl" />
           ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-80 rounded-xl" />
         </div>
         <div className="grid gap-6 lg:grid-cols-3">
           <Skeleton className="h-80 rounded-xl lg:col-span-2" />
@@ -116,6 +137,10 @@ export function DashboardView({
   }
 
   const stats = data?.stats;
+  const completed = stats?.completed ?? 0;
+  const failed = stats?.failed ?? 0;
+  const finished = completed + failed;
+  const successRate = finished > 0 ? Math.round((completed / finished) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -127,31 +152,31 @@ export function DashboardView({
           sub={`${stats?.pausedAgents ?? 0} paused`}
           icon={Bot}
           tone="text-primary"
-          onClick={() => router.push("/dashboard/agents")}
+          href="/dashboard/agents"
         />
         <StatCard
           label="Completed runs"
           value={stats?.completed ?? 0}
           sub="All time"
           icon={CheckCircle2}
-          tone="text-foreground"
-          onClick={() => router.push("/dashboard/runs?status=completed")}
+          tone="text-emerald-600 dark:text-emerald-400"
+          href="/dashboard/runs?status=completed"
         />
         <StatCard
           label="Scheduled"
           value={stats?.scheduled ?? 0}
           sub="Upcoming executions"
           icon={CalendarClock}
-          tone="text-foreground"
-          onClick={() => router.push("/dashboard/runs?status=scheduled")}
+          tone="text-sky-600 dark:text-sky-400"
+          href="/dashboard/runs?status=scheduled"
         />
         <StatCard
           label="Needs attention"
           value={(stats?.failed ?? 0) + (stats?.running ?? 0)}
           sub={`${stats?.failed ?? 0} failed · ${stats?.running ?? 0} running`}
           icon={XCircle}
-          tone="text-red-500"
-          onClick={() => router.push("/dashboard/runs?status=failed,running")}
+          tone="text-red-600 dark:text-red-400"
+          href="/dashboard/runs?status=failed"
         />
       </div>
 
@@ -221,10 +246,10 @@ export function DashboardView({
           <CardContent className="space-y-3">
             {data?.upcoming.length ? (
               data.upcoming.slice(0, 5).map((run) => (
-                <button
+                <Link
                   key={run.id}
-                  onClick={() => router.push(`/dashboard/runs/${run.id}`)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40"
+                  href={`/dashboard/runs/${run.id}`}
+                  className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10">
                     <CalendarClock className="size-4 text-muted-foreground" />
@@ -236,7 +261,7 @@ export function DashboardView({
                     </p>
                   </div>
                   <ArrowUpRight className="size-3.5 text-muted-foreground" />
-                </button>
+                </Link>
               ))
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">
@@ -267,10 +292,10 @@ export function DashboardView({
           <CardContent className="space-y-3">
             {data?.latest.length ? (
               data.latest.map((run) => (
-                <button
+                <Link
                   key={run.id}
-                  onClick={() => router.push(`/dashboard/runs/${run.id}`)}
-                  className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40"
+                  href={`/dashboard/runs/${run.id}`}
+                  className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
                   <div className="mt-0.5">
                     <StatusBadge status={run.status} />
@@ -286,7 +311,7 @@ export function DashboardView({
                       {run.error ?? run.excerpt ?? "No output"}
                     </p>
                   </div>
-                </button>
+                </Link>
               ))
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">
@@ -310,33 +335,34 @@ export function DashboardView({
               icon={Sparkles}
               title="Create a new agent"
               description="Describe any recurring task"
-              onClick={() => router.push("/dashboard/agents?tab=create")}
+              href="/dashboard/agents?tab=create"
             />
             <QuickAction
               icon={Radar}
               title="Browse templates"
               description="Pre-built agents ready to use"
-              onClick={() => router.push("/dashboard/templates")}
+              href="/dashboard/templates"
             />
             <QuickAction
               icon={PlayCircle}
               title="Run an agent now"
               description="Kick off an immediate execution"
-              onClick={() => router.push("/dashboard/agents")}
+              href="/dashboard/agents"
             />
             <div className="rounded-xl border border-border/60 bg-muted/20 p-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium">Completed this week</span>
-                <span className="text-muted-foreground">
-                  {stats?.completed ?? 0} runs
+                <span className="font-medium">Success rate</span>
+                <span className="tabular-nums text-muted-foreground">
+                  {successRate}%
                 </span>
               </div>
               <Progress
-                value={Math.min(100, (stats?.completed ?? 0) * 4)}
+                value={successRate}
+                aria-label="Run success rate"
                 className="mt-2 h-1.5"
               />
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Last refreshed {relativeTime(new Date())}
+              <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
+                {completed} completed · {failed} failed
               </p>
             </div>
             <Button
@@ -360,33 +386,35 @@ function StatCard({
   sub,
   icon: Icon,
   tone,
-  onClick,
+  href,
 }: {
   label: string;
   value: number;
   sub: string;
   icon: typeof Bot;
   tone: string;
-  onClick?: () => void;
+  href: string;
 }) {
   return (
-    <Card
-      className="cursor-pointer border-border/70 transition-colors hover:border-foreground/15"
-      onClick={onClick}
+    <Link
+      href={href}
+      className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
     >
-      <CardContent className="flex items-start justify-between p-5">
-        <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-3xl font-semibold tabular-nums tracking-tight">
-            <CountUp value={value} />
-          </p>
-          <p className="text-xs text-muted-foreground">{sub}</p>
-        </div>
-        <div className={`rounded-lg bg-muted p-2.5 ${tone}`}>
-          <Icon className="size-4 text-muted-foreground" />
-        </div>
-      </CardContent>
-    </Card>
+      <Card className="h-full border-border/70 transition-colors hover:border-foreground/15">
+        <CardContent className="flex items-start justify-between p-5">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-3xl font-semibold tabular-nums tracking-tight">
+              <CountUp value={value} />
+            </p>
+            <p className="text-xs text-muted-foreground">{sub}</p>
+          </div>
+          <div className="rounded-lg bg-muted p-2.5">
+            <Icon className={`size-4 ${tone}`} />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -394,17 +422,17 @@ function QuickAction({
   icon: Icon,
   title,
   description,
-  onClick,
+  href,
 }: {
   icon: typeof Sparkles;
   title: string;
   description: string;
-  onClick: () => void;
+  href: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40"
+    <Link
+      href={href}
+      className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-left transition hover:border-primary/30 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
         <Icon className="size-4" />
@@ -414,6 +442,6 @@ function QuickAction({
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <ArrowRight className="size-3.5 text-muted-foreground" />
-    </button>
+    </Link>
   );
 }

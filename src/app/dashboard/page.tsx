@@ -32,12 +32,16 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
-        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
+        <Skeleton className="h-28 rounded-xl" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Skeleton className="h-80 rounded-xl lg:col-span-2" />
+        <Skeleton className="h-80 rounded-xl" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
         <Skeleton className="h-80 rounded-xl lg:col-span-2" />
         <Skeleton className="h-80 rounded-xl" />
       </div>
