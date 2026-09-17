@@ -4,6 +4,7 @@ import type { ScheduleConfig } from "@/db/schema";
 import { computeNextRun } from "@/agent/schedule";
 import { planAllowsLiveRuns, UPGRADE_MESSAGE } from "@/lib/billing";
 import { executeAgent, type RunnerAgent } from "./runner";
+import { notifyRunFinished } from "./notify";
 
 const runningRuns = new Set<number>();
 const MAX_CONCURRENT = Math.max(1, Number(process.env.RUN_MAX_CONCURRENT ?? 1));
@@ -273,6 +274,19 @@ export async function executeRunById(runId: number): Promise<void> {
         })
         .where(eq(schema.users.email, run.userEmail));
     }
+
+    // Instant "job finished" ping to Telegram (detached — a notification
+    // failure must never fail or delay the run itself).
+    void notifyRunFinished({
+      runId,
+      agentId: agent.agentId,
+      userEmail: run.userEmail,
+      status: result.status,
+      output: result.output,
+      error: result.error,
+    }).catch((error) => {
+      console.warn("[notify] telegram completion failed:", error);
+    });
 
     if (run.trigger === "schedule") {
       await insertNextRun({
