@@ -391,14 +391,16 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
     });
 
     // Deterministic delivery: the deliverable goes to Telegram as part of the
-    // run itself — never left to the model's whim. Skipped when Telegram is
-    // not connected/configured, or when the model already sent a substantial
-    // message (so the user never receives the same brief twice).
-    const telegramTool = toolset.tools.find(
-      (tool) =>
-        tool.name.toUpperCase() === "TELEGRAM_SEND_MESSAGE" &&
-        tool.source === "composio",
-    );
+    // run itself — never left to the model's whim. Run mode only: chat replies
+    // are interactive and must not be pushed to Telegram.
+    const telegramTool =
+      options.mode === "chat"
+        ? undefined
+        : toolset.tools.find(
+            (tool) =>
+              tool.name.toUpperCase() === "TELEGRAM_SEND_MESSAGE" &&
+              tool.source === "composio",
+          );
     if (telegramTool && finalOutput && !telegramDeliverableSent(steps)) {
       let chatId = options.agent.telegramChatId?.trim() || null;
       if (!chatId) {
