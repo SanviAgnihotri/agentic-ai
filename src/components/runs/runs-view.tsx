@@ -28,6 +28,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { RunRowsSkeleton } from "@/components/runs/runs-skeleton";
 import { apiFetch, usePoll } from "@/hooks/use-poll";
 import { relativeTime, shortDateTime, truncate } from "@/lib/format";
 
@@ -182,11 +183,7 @@ export function RunsView() {
       </Card>
 
       {loading && !data ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Card key={index} className="h-20 animate-pulse bg-muted/30" />
-          ))}
-        </div>
+        <RunRowsSkeleton />
       ) : runs.length === 0 ? (
         <EmptyState
           icon={CalendarClock}
