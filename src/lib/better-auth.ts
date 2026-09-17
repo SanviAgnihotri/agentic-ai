@@ -8,8 +8,7 @@ import { getDb, schema } from "@/db";
  * Session/identity tables are the Better Auth defaults (`user`, `session`,
  * `account`, `verification`); the app-specific profile (plan, credits, Dodo
  * ids) stays in the existing `users` table, keyed by email — see
- * `upsertAppUser` in `@/lib/auth`. The demo workspace signs in through Better
- * Auth as well (seeded credentials), so there is a single cookie family.
+ * `upsertAppUser` in `@/lib/auth`. So there is a single cookie family.
  *
  * The instance is memoised on globalThis so dev HMR doesn't rebuild it and
  * `getDb()` migrations only run once.
@@ -30,16 +29,17 @@ const createAuth = async () =>
     }),
     emailAndPassword: {
       enabled: true,
-      // The deployed app is closed for registration: existing accounts can
-      // sign in, but the public sign-up endpoint is disabled. New identities
-      // are additionally gated by the allowlist hook below.
-      disableSignUp: true,
+      // Registration is open. To gate it again, set AUTH_SIGNUP_ALLOWLIST
+      // (comma-separated emails) — the hook below then blocks any other
+      // identity creation, and `disableSignUp: true` closes email+password
+      // sign-up as well.
     },
     databaseHooks: {
       user: {
         create: {
-          // Block identity creation (e.g. a first-time social sign-in) unless
-          // the email is allowlisted via AUTH_SIGNUP_ALLOWLIST (comma-separated).
+          // Optional gate: when AUTH_SIGNUP_ALLOWLIST (comma-separated) is
+          // set, identity creation (sign-up or a first-time social sign-in)
+          // is restricted to those emails. Empty/unset means open registration.
           before: async (user) => {
             const allowlist = (process.env.AUTH_SIGNUP_ALLOWLIST ?? "")
               .split(",")
@@ -55,6 +55,29 @@ const createAuth = async () =>
       },
     },
     session: { expiresIn: 60 * 60 * 24 * 30 }, // 30 days, like the old demo session
+    // Account linking — one `user` row per email, one `account` row per provider.
+    //
+    // Google and GitHub both return provider-verified emails, so a second
+    // social sign-in with the same email (e.g. Google first, then GitHub)
+    // automatically links the new provider to the existing user instead of
+    // failing or creating a duplicate identity. Linking is only ever allowed
+    // between accounts that share the exact same email (`allowDifferentEmails`
+    // stays false). Password-first users — whose local `emailVerified` is
+    // false because no verification email is sent — cannot be linked
+    // implicitly; they link from Settings → Connected accounts while signed
+    // in, which proves ownership of both identities.
+    account: {
+      accountLinking: {
+        enabled: true,
+        allowDifferentEmails: false,
+      },
+    },
+    // OAuth failures (e.g. "account not linked") redirect here with
+    // ?error=<code>&error_description=<text> instead of Better Auth's default
+    // /error 404.
+    onAPIError: {
+      errorURL: "/auth-error",
+    },
     socialProviders: {
       ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
         ? {

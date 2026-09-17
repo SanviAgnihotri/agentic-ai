@@ -22,8 +22,7 @@ export type SessionUser = {
  *
  * Better Auth owns the session (Google / GitHub / email+password); the session
  * user is mapped onto the app's `users` table by email, creating the row on
- * first sign-in. The demo workspace signs in through Better Auth too
- * (`/api/demo` seeds its identity with known credentials).
+ * first sign-in.
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
   try {

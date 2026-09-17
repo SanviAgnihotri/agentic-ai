@@ -32,7 +32,7 @@ usable for demos and local development.
 | **Data** | Drizzle ORM — embedded PGlite locally, any Postgres (Aiven/Neon) in production |
 | **AI** | OpenCode Go (DeepSeek), Groq, OpenAI, Gemini — or the built-in mock |
 | **Automation** | Composio (integrations), Browserbase (browser), Inngest (background jobs) |
-| **Auth** | Better Auth — email+password & GitHub sign-in (invite-only: sign-up disabled, allowlist-gated) |
+| **Auth** | Better Auth — email+password & GitHub sign-in/sign-up (optionally allowlist-gated via `AUTH_SIGNUP_ALLOWLIST`) |
 
 ## 🚀 Getting started
 
@@ -43,8 +43,8 @@ bun install
 bun dev
 ```
 
-Open <http://localhost:3000> and click **“Explore the live demo workspace”** — it seeds a
-demo user with sample agents, run history and connected tools. No keys required.
+Open <http://localhost:3000> and click **“Try the live demo”** to create an account
+(you'll land on the sign-up page — registration is open, no keys required).
 
 ### Optional: real AI & integrations
 
