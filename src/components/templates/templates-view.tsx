@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Layers, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/shared/empty-state";
 import { iconFor, ToolIcon, brandSlugForToolNames } from "@/components/shared/tool-icon";
 import { agentTemplates } from "@/agent/config/templates";
 import { toolBySlug } from "@/agent/tools/catalog";
@@ -20,18 +22,31 @@ const CATEGORIES = [
   "Growth",
 ] as const;
 
+type Category = (typeof CATEGORIES)[number];
+
 export function TemplatesView() {
   const router = useRouter();
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("All");
+  const searchParams = useSearchParams();
+  const urlCategory = searchParams.get("category") as Category | null;
+  const [category, setCategory] = useState<Category>(
+    urlCategory && CATEGORIES.includes(urlCategory) ? urlCategory : "All",
+  );
+
+  const selectCategory = (value: Category) => {
+    setCategory(value);
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "All") params.delete("category");
+    else params.set("category", value);
+    const qs = params.toString();
+    router.replace(qs ? `/dashboard/templates?${qs}` : "/dashboard/templates", {
+      scroll: false,
+    });
+  };
 
   const templates =
     category === "All"
       ? agentTemplates
       : agentTemplates.filter((template) => template.category === category);
-
-  const applyTemplate = (prompt: string) => {
-    router.push(`/dashboard/agents?tab=create&prompt=${encodeURIComponent(prompt)}`);
-  };
 
   return (
     <div className="space-y-6">
@@ -45,20 +60,15 @@ export function TemplatesView() {
             Production-ready agent recipes. Load one and customize it in seconds.
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => router.push("/dashboard/agents?tab=create")}
-        >
-          <Sparkles className="size-4" />
-          Start from scratch
+        <Button variant="outline" className="gap-2" asChild>
+          <Link href="/dashboard/agents?tab=create">
+            <Sparkles className="size-4" />
+            Start from scratch
+          </Link>
         </Button>
       </div>
 
-      <Tabs
-        value={category}
-        onValueChange={(value) => setCategory(value as (typeof CATEGORIES)[number])}
-      >
+      <Tabs value={category} onValueChange={(value) => selectCategory(value as Category)}>
         <TabsList className="h-9 flex-wrap">
           {CATEGORIES.map((item) => (
             <TabsTrigger key={item} value={item} className="text-xs">
@@ -68,7 +78,14 @@ export function TemplatesView() {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {templates.length === 0 ? (
+        <EmptyState
+          icon={Layers}
+          title="No templates in this category yet"
+          description="Pick another category or start from scratch to build your own agent."
+        />
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {templates.map((template) => {
           const Icon = iconFor(template.icon);
           const brandSlug = brandSlugForToolNames(template.tools);
@@ -86,7 +103,7 @@ export function TemplatesView() {
                       <Icon className="size-5 text-muted-foreground" />
                     )}
                   </div>
-                  <Badge variant="secondary" className="text-[10px]">
+                  <Badge variant="secondary" className="text-[11px]">
                     {template.category}
                   </Badge>
                 </div>
@@ -105,7 +122,7 @@ export function TemplatesView() {
                       return (
                         <div
                           key={toolName}
-                          className="flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground"
+                          className="flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/30 px-2 py-1 text-[11px] text-muted-foreground"
                         >
                           {tool && (
                             <ToolIcon
@@ -124,13 +141,13 @@ export function TemplatesView() {
                     <span className="text-[11px] text-muted-foreground">
                       {template.schedule}
                     </span>
-                    <Button
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs"
-                      onClick={() => applyTemplate(template.prompt)}
-                    >
-                      Use template
-                      <ArrowRight className="size-3" />
+                    <Button size="sm" className="h-8 gap-1.5 text-xs" asChild>
+                      <Link
+                        href={`/dashboard/agents?tab=create&prompt=${encodeURIComponent(template.prompt)}`}
+                      >
+                        Use template
+                        <ArrowRight className="size-3" />
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -138,7 +155,8 @@ export function TemplatesView() {
             </Card>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

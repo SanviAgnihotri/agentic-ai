@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Bot,
@@ -176,13 +177,11 @@ export function AgentCard({
                   {agent.status === "active" ? "Pause agent" : "Resume agent"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() =>
-                    router.push(`/dashboard/runs?agentId=${agent.agentId}`)
-                  }
-                >
-                  <PlayCircle className="size-4" />
-                  View runs
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/runs?agentId=${agent.agentId}`}>
+                    <PlayCircle className="size-4" />
+                    View runs
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   variant="destructive"
@@ -254,13 +253,8 @@ export function AgentCard({
               <MessageSquare className="size-3.5" />
               Chat
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => router.push(`/dashboard/agents/${agent.agentId}`)}
-            >
-              Open
+            <Button size="sm" variant="outline" className="gap-1.5" asChild>
+              <Link href={`/dashboard/agents/${agent.agentId}`}>Open</Link>
             </Button>
           </div>
         </CardContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bot,
@@ -11,7 +12,6 @@ import {
   PlayCircle,
   Plus,
   Search,
-  Settings,
   Sun,
 } from "lucide-react";
 import { useTheme } from "@/components/theme";
@@ -117,18 +117,16 @@ export function AppHeader() {
           className="size-9"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
-          <Sun className="size-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute size-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <Sun className="size-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute size-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>
         </Button>
 
-        <Button
-          size="sm"
-          className="h-9 gap-1.5"
-          onClick={() => router.push("/dashboard/agents?tab=create")}
-        >
-          <Plus className="size-4" />
-          New agent
+        <Button size="sm" className="h-9 gap-1.5" asChild>
+          <Link href="/dashboard/agents?tab=create">
+            <Plus className="size-4" />
+            New agent
+          </Link>
         </Button>
       </div>
 

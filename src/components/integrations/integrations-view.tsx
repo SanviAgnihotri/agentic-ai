@@ -7,9 +7,8 @@ import {
   Loader2,
   Plug,
   Search,
-  ShieldCheck,
+  SearchX,
   ShieldOff,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/shared/empty-state";
 import { ToolIcon } from "@/components/shared/tool-icon";
 import { apiFetch } from "@/hooks/use-poll";
 import { TOOL_CATALOG } from "@/agent/tools/catalog";
@@ -180,10 +180,12 @@ export function IntegrationsView() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search 100+ integrations…"
+              aria-label="Search integrations"
+              type="search"
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm tabular-nums text-muted-foreground">
             <Plug className="size-4" />
             {data?.connectedCount ?? 0} connected
           </div>
@@ -192,7 +194,7 @@ export function IntegrationsView() {
 
       <Tabs value={category} onValueChange={setCategory}>
         <TabsList className="h-9 max-w-full flex-nowrap overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {categories.slice(0, 14).map((item) => (
+          {categories.map((item) => (
             <TabsTrigger
               key={item}
               value={item}
@@ -204,7 +206,14 @@ export function IntegrationsView() {
         </TabsList>
       </Tabs>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {tools.length === 0 ? (
+        <EmptyState
+          icon={SearchX}
+          title="No integrations match"
+          description="Try a different search term or category — or clear the filters to see everything."
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tools.map((tool) => (
           <Card
             key={tool.slug}
@@ -287,7 +296,8 @@ export function IntegrationsView() {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

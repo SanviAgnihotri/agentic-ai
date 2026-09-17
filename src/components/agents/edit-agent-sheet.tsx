@@ -3,6 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -31,12 +41,14 @@ export function EditAgentSheet({
   onSaved: () => void;
 }) {
   const [draft, setDraft] = useState<AgentDraft | null>(null);
+  const [baseline, setBaseline] = useState<string | null>(null);
   const [connections, setConnections] = useState<ToolConnectionInfo[]>([]);
   const [saving, setSaving] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   useEffect(() => {
     if (!agent || !open) return;
-    setDraft({
+    const initial: AgentDraft = {
       agentId: agent.agentId,
       name: agent.name ?? "",
       description: agent.description ?? "",
@@ -48,8 +60,26 @@ export function EditAgentSheet({
       outputFormat: agent.outputFormat ?? "",
       agentImage: agent.agentImage ?? undefined,
       status: agent.status ?? "active",
-    });
+    };
+    setDraft(initial);
+    setBaseline(JSON.stringify(initial));
   }, [agent, open]);
+
+  const dirty = draft !== null && baseline !== null && JSON.stringify(draft) !== baseline;
+
+  // Closing with unsaved edits asks first — Esc, overlay click and Cancel all
+  // route through here.
+  const requestClose = (nextOpen: boolean) => {
+    if (nextOpen) {
+      onOpenChange(true);
+      return;
+    }
+    if (dirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    onOpenChange(false);
+  };
 
   const loadConnections = useCallback(async (agentId: string) => {
     try {
@@ -128,7 +158,8 @@ export function EditAgentSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <>
+    <Sheet open={open} onOpenChange={requestClose}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -150,7 +181,7 @@ export function EditAgentSheet({
               onDisconnect={disconnectTool}
             />
             <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border/70 bg-background/95 py-3 backdrop-blur">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+              <Button variant="outline" onClick={() => requestClose(false)}>
                 Cancel
               </Button>
               <Button className="gap-2" onClick={save} disabled={saving}>
@@ -166,5 +197,29 @@ export function EditAgentSheet({
         )}
       </SheetContent>
     </Sheet>
+
+    <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your edits to this agent haven’t been saved. Closing now loses them.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-white hover:bg-destructive/90"
+            onClick={() => {
+              setDiscardOpen(false);
+              onOpenChange(false);
+            }}
+          >
+            Discard changes
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

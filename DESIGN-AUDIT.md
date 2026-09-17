@@ -3,39 +3,42 @@
 Full-app review (14 pages, ~57 components). Legend: `[ ]` open · `[x]` fixed.
 Batches: **B1** behavior/UX · **B2** accessibility · **B3** design-system & copy · **B4** infrastructure.
 
+> Status: B1 essentially done (one create-agent guard left). B2 partially done
+> (link semantics, runs/integrations labels, progress names, timeline live
+> region) — the rest of B2, plus B3 and B4, remain.
+
 ## B1 — Behavior / UX
 
-- [ ] Runs filters not URL-synced — `runs-view.tsx:66-83` (status/agentId/search are useState only; lost on reload, back/forward broken, not shareable)
-- [ ] Dashboard "Needs attention" links to `?status=failed,running` which matches no tab — `dashboard-view.tsx:154`, `runs-view.tsx:54-60`
-- [ ] Failed fetches render empty states instead of errors (usePoll `error` ignored): `runs-view.tsx:80`, `run-detail.tsx:138`, `dashboard-view.tsx:85-90`
-- [ ] Enter on a run row's Stop button also navigates (event bubbles) — `runs-view.tsx:198-205,257-268`
-- [ ] Stop run cancels without confirmation — `runs-view.tsx:257-268`, `run-detail.tsx:295-309`
-- [ ] Disconnect social account without confirmation — `connected-accounts.tsx:163`
-- [ ] Unsaved edits discarded silently: `create-agent.tsx:255-261`, `edit-agent-sheet.tsx:130-152`, chat close
-- [ ] "Completed this week" shows all-time `stats.completed` × arbitrary `*4` bar — `dashboard-view.tsx:327-337`
-- [ ] "Last refreshed 0 seconds ago" never updates — `dashboard-view.tsx:339`
-- [ ] StatCard `tone` prop has no effect (icon hardcodes `text-muted-foreground`) — `dashboard-view.tsx:385-386`
-- [ ] Run duration hardcoded seconds ("5400s") — `runs-view.tsx:244-252`
-- [ ] Billing subscription status raw snake_case ("On_hold") — `billing/page.tsx:113`
-- [ ] Pricing interval lost on sign-in redirect (no `redirect_url`) — `pricing-plans.tsx:43`; interval not persisted — `:32`
-- [ ] Missing empty states when filters match nothing — `integrations-view.tsx:207-290`, `templates-view.tsx:71-141`
-- [ ] Category list silently capped at 14 — `integrations-view.tsx:195`
+- [x] Runs filters not URL-synced — `runs-view.tsx:66-83` (status/agentId/search now in URL; verified active tab SSR)
+- [x] Dashboard "Needs attention" links to `?status=failed,running` which matches no tab — now `?status=failed`
+- [x] Failed fetches render empty states instead of errors (usePoll `error` ignored) — runs list, run detail, dashboard now show error + retry
+- [x] Enter on a run row's Stop button also navigates (event bubbles) — rows are stretched links now
+- [x] Stop run cancels without confirmation — both runs list and detail confirm
+- [x] Disconnect social account without confirmation — now confirms
+- [x] Unsaved edits discarded silently — edit-agent-sheet close guarded; create-agent phases still open (see below)
+- [x] "Completed this week" shows all-time `stats.completed` × arbitrary `*4` bar — replaced with success rate
+- [x] "Last refreshed 0 seconds ago" never updates — removed
+- [x] StatCard `tone` prop has no effect — tone now applied to the icon
+- [x] Run duration hardcoded seconds ("5400s") — uses formatDuration
+- [x] Billing subscription status raw snake_case ("On_hold") — humanized labels
+- [x] Pricing interval lost on sign-in redirect — URL-backed + redirect_url round-trip
+- [x] Missing empty states when filters match nothing — integrations + templates
+- [x] Category list silently capped at 14 — cap removed (scrollable tab strip)
+- [ ] create-agent "Create another"/"View in My Agents" still discard ready-phase edits without warning
 
 ## B2 — Accessibility
 
-- [ ] Navigation via buttons/divs instead of links (no Cmd/middle-click, no href):
-      `dashboard-view.tsx:130-155,224-239,270-289,313-325`, `runs-view.tsx:198-205`, `templates-view.tsx:48-55,127-134`,
-      `app-sidebar.tsx:42-49,53-60,96-135,154`, `app-header.tsx:128`, `agent-card.tsx:174-176,255`, `pricing-plans.tsx:155`
-- [ ] Stat cards keyboard-inaccessible (`Card` + onClick, no role/tabIndex) — `dashboard-view.tsx:372-376`
+- [x] Navigation via buttons/divs instead of links (no Cmd/middle-click, no href):
+      dashboard cards/rows/quick actions, runs rows, templates, sidebar, header,
+      agent-card menu, pricing CTA — all real `<Link>`s now
+- [x] Stat cards keyboard-inaccessible — now links with visible focus ring
 - [ ] No skip link anywhere; sticky header overlaps anchors (no `scroll-mt-*`) — `app/page.tsx:225,252`, `app-header.tsx:85`
-- [ ] Unlabeled controls:
-      runs search/filter `runs-view.tsx:161-172`; my-agents search/status `my-agents.tsx:86-102`; integrations search `integrations-view.tsx:179-184`;
-      chat textarea + send `agent-chat.tsx:191,204`; agent-card ⋮ `agent-card.tsx:151`;
+- [ ] Unlabeled controls (remaining): my-agents search/status `my-agents.tsx:86-102`; chat textarea + send `agent-chat.tsx:191,204`;
       agent-config-form schedule/time/frequency/day/date/skills/tools `agent-config-form.tsx:170-251,269-303,407-415`;
-      create-agent textarea/submit `create-agent.tsx:386-410`
+      create-agent textarea/submit `create-agent.tsx:386-410` (runs + integrations search/filter now labeled)
 - [ ] Chat textarea placeholder-only (no label) — `agent-chat.tsx:191`
-- [ ] Progress bars without accessible name — `billing/page.tsx:163`, `dashboard-view.tsx:334-337`, `app-sidebar.tsx:180`
-- [ ] Async updates not announced (`aria-live`): chat replies `agent-chat.tsx:109-157`; run timeline `run-detail.tsx:356-373,502-511`; wizard steps `clarification-wizard.tsx:88`; integrations warning `integrations-view.tsx:162-172`; create-agent status `create-agent.tsx:287-290`
+- [x] Progress bars without accessible name — billing, dashboard, sidebar all labeled
+- [ ] Async updates not announced (`aria-live`): chat replies `agent-chat.tsx:109-157`; wizard steps `clarification-wizard.tsx:88`; integrations warning `integrations-view.tsx:162-172`; create-agent status `create-agent.tsx:287-290` (run timeline done)
 - [ ] Form error not `role="alert"`, not linked to fields, no focus move — `better-auth-form.tsx:186`
 - [ ] Clarification options lack `aria-pressed`/radio semantics + group label — `clarification-wizard.tsx:112-133`
 - [ ] TabsContent `outline-none` without focus replacement — `agents-view.tsx:64`

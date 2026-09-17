@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Blocks,
   Bot,
@@ -34,29 +35,25 @@ import { UserMenu } from "./user-menu";
 
 /** Visible upgrade CTA (or a Pro badge once subscribed). */
 function UpgradeCta() {
-  const router = useRouter();
   const { user } = useUser();
 
   if (user?.plan === "pro") {
     return (
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard/billing")}
-        className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/15"
+      <Link
+        href="/dashboard/billing"
+        className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
       >
         <Sparkles className="size-2.5" />
         Pro plan
-      </button>
+      </Link>
     );
   }
   return (
-    <Button
-      size="sm"
-      className="mt-2 h-7 w-full gap-1 text-xs"
-      onClick={() => router.push("/pricing")}
-    >
-      <Sparkles className="size-3" />
-      Upgrade
+    <Button size="sm" className="mt-2 h-7 w-full gap-1 text-xs" asChild>
+      <Link href="/pricing">
+        <Sparkles className="size-3" />
+        Upgrade
+      </Link>
     </Button>
   );
 }
@@ -80,7 +77,6 @@ const ACCOUNT_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user } = useUser();
 
   const credits = user?.usageCredits ?? FREE_USAGE_CREDITS;
@@ -93,20 +89,18 @@ export function AppSidebar() {
       <SidebarHeader className="px-3 py-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              onClick={() => router.push("/dashboard")}
-              className="gap-2.5"
-            >
-              <div className="flex size-9 items-center justify-center">
-                <Image src="/logo.svg" alt="Groovy AI" width={30} height={30} />
-              </div>
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="truncate text-[15px] font-semibold">Groovy AI</span>
-                <span className="truncate text-[11px] text-muted-foreground">
-                  Agent workspace
-                </span>
-              </div>
+            <SidebarMenuButton size="lg" asChild className="gap-2.5">
+              <Link href="/dashboard">
+                <div className="flex size-9 items-center justify-center">
+                  <Image src="/logo.svg" alt="Groovy AI" width={30} height={30} />
+                </div>
+                <div className="grid flex-1 text-left leading-tight">
+                  <span className="truncate text-[15px] font-semibold">Groovy AI</span>
+                  <span className="truncate text-[11px] text-muted-foreground">
+                    Agent workspace
+                  </span>
+                </div>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -127,11 +121,13 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       isActive={active}
                       tooltip={item.title}
-                      onClick={() => router.push(item.href)}
+                      asChild
                       className="h-10"
                     >
-                      <item.icon className="size-4 text-muted-foreground" />
-                      <span>{item.title}</span>
+                      <Link href={item.href}>
+                        <item.icon className="size-4 text-muted-foreground" />
+                        <span>{item.title}</span>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -151,11 +147,13 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       isActive={active}
                       tooltip={item.title}
-                      onClick={() => router.push(item.href)}
+                      asChild
                       className="h-10"
                     >
-                      <item.icon className="size-4 text-muted-foreground" />
-                      <span>{item.title}</span>
+                      <Link href={item.href}>
+                        <item.icon className="size-4 text-muted-foreground" />
+                        <span>{item.title}</span>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -173,11 +171,15 @@ export function AppSidebar() {
               <Sparkles className="size-3.5 text-primary" />
               Usage credits
             </span>
-            <span className="text-muted-foreground">
-              {credits}/{total}
+            <span className="tabular-nums text-muted-foreground">
+              {credits.toLocaleString("en")}/{total.toLocaleString("en")}
             </span>
           </div>
-          <Progress value={percent} className="mt-2 h-1.5" />
+          <Progress
+            value={percent}
+            aria-label={`Usage credits: ${percent}% left`}
+            className="mt-2 h-1.5"
+          />
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
             Each tool call uses one credit. Resets on your plan renewal.
           </p>
