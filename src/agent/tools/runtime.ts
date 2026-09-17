@@ -742,11 +742,14 @@ export async function buildAgentToolset(options: {
       const simulated = simulateTool(tool.name, args);
       return {
         title: simulated.title,
-        summary: simulated.summary,
+        summary: `${simulated.summary} (simulated)`,
         output: {
           ...simulated.output,
           __label: toolBySlug.get(tool.toolSlug)?.name ?? tool.toolSlug,
           __summary: simulated.summary,
+          // Demo-mode results must never read as real deliveries — everything
+          // that did not leave the app through a live integration is marked.
+          __simulated: true,
         },
         url: simulated.url,
       };

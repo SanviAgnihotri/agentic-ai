@@ -444,8 +444,8 @@ export function simulateTool(
     case "TELEGRAM_SEND_MESSAGE": {
       return {
         title: "Sent Telegram message",
-        summary: "Telegram notification delivered.",
-        output: { messageId: Date.now(), chat: str(args, "chatId", "me"), status: "sent" },
+        summary: "Telegram notification simulated — connect Telegram to send for real.",
+        output: { messageId: Date.now(), chat: str(args, "chatId", "me"), status: "simulated" },
       };
     }
 
