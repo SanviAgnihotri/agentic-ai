@@ -13,6 +13,7 @@ import {
   telegramDeliverableSent,
 } from "@/agent/tools/telegram";
 import { appUrl } from "@/lib/dodo";
+import { truncateSafe, wellFormed } from "@/lib/text";
 
 export interface RunnerAgent {
   agentId: string;
@@ -120,6 +121,10 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
       at: new Date().toISOString(),
       ...step,
     };
+    // Steps are stored as jsonb; lone surrogates (from truncated emoji or an
+    // upstream provider) would make the whole write fail.
+    full.title = wellFormed(full.title);
+    if (typeof full.detail === "string") full.detail = wellFormed(full.detail);
     steps.push(full);
     await options.onSteps?.(steps);
   };
@@ -375,13 +380,17 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
     }
 
     // Keep the timeline row readable: a one-line plain-text summary, never a
-    // raw markdown blob. The full deliverable lives in the output.
+    // raw markdown blob. The full deliverable lives in the output. Truncation
+    // is surrogate-safe — slicing an emoji in half produces a lone UTF-16
+    // surrogate that Postgres refuses to store in the steps jsonb.
     const finalSummary =
-      finalOutput
-        .replace(/[#>*_`|]|\!\[/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 130) || "Final deliverable ready.";
+      truncateSafe(
+        finalOutput
+          .replace(/[#>*_`|]|\!\[/g, " ")
+          .replace(/\s+/g, " ")
+          .trim(),
+        130,
+      ) || "Final deliverable ready.";
 
     await emit({
       type: "final",
@@ -438,7 +447,7 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
             toolset.execute(telegramTool.name, {
               chat_id: chatId,
               // Plain text: deterministic and never trips Telegram's parser.
-              text: `${markdownToPlainText(finalOutput)}${link}`,
+              text: wellFormed(`${markdownToPlainText(finalOutput)}${link}`),
             }),
             toolTimeoutMs,
             `Telegram delivery timed out after ${Math.round(toolTimeoutMs / 1000)}s`,
@@ -473,7 +482,7 @@ export async function executeAgent(options: ExecuteAgentOptions): Promise<Runner
 
     return {
       status: "completed",
-      output: finalOutput,
+      output: wellFormed(finalOutput),
       steps,
       creditsUsed,
       liveUrl,

@@ -7,6 +7,7 @@ import {
 } from "@/agent/integrations";
 import { telegramChatIdFromSteps } from "@/agent/tools/telegram";
 import { appUrl } from "@/lib/dodo";
+import { truncateSafe, wellFormed } from "@/lib/text";
 
 /**
  * Failure alert for finished agent runs.
@@ -23,10 +24,10 @@ function plainSummary(value: string | null | undefined): string {
     .replace(/[#>*_`|]|\!\[/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (stripped.length <= 180) return stripped;
+  if (stripped.length <= 180) return wellFormed(stripped);
   const cut = stripped.slice(0, 180);
   const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > 108 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+  return `${truncateSafe(lastSpace > 108 ? cut.slice(0, lastSpace) : cut, 180).trimEnd()}…`;
 }
 
 function formatDuration(ms: number): string {
@@ -103,11 +104,13 @@ export async function notifyRunFinished(input: {
   if (!composio) return;
 
   const elapsed = input.durationMs ? ` (${formatDuration(input.durationMs)})` : "";
-  const text = [
-    `⚠️ Run failed — ${agent.name ?? "Agent"}${elapsed}`,
-    plainSummary(input.error) || "The run failed — check the run log.",
-    `${appUrl()}/dashboard/runs/${input.runId}`,
-  ].join("\n");
+  const text = wellFormed(
+    [
+      `⚠️ Run failed — ${agent.name ?? "Agent"}${elapsed}`,
+      plainSummary(input.error) || "The run failed — check the run log.",
+      `${appUrl()}/dashboard/runs/${input.runId}`,
+    ].join("\n"),
+  );
 
   const result = (await composio.execute("TELEGRAM_SEND_MESSAGE", {
     chat_id: chatId,

@@ -3,6 +3,7 @@ import { getDb, schema } from "@/db";
 import type { ScheduleConfig } from "@/db/schema";
 import { computeNextRun } from "@/agent/schedule";
 import { planAllowsLiveRuns, UPGRADE_MESSAGE } from "@/lib/billing";
+import { deepWellFormed, wellFormed } from "@/lib/text";
 import { executeAgent, type RunnerAgent } from "./runner";
 import { notifyRunFinished } from "./notify";
 
@@ -251,7 +252,8 @@ export async function executeRunById(runId: number): Promise<void> {
         const innerDb = await getDb();
         await innerDb
           .update(schema.agentRun)
-          .set({ steps })
+          // jsonb rejects lone UTF-16 surrogates; normalize before storing.
+          .set({ steps: deepWellFormed(steps) })
           .where(eq(schema.agentRun.id, runId));
       },
     });
@@ -260,9 +262,9 @@ export async function executeRunById(runId: number): Promise<void> {
       .update(schema.agentRun)
       .set({
         status: result.status,
-        output: result.output,
-        steps: result.steps,
-        error: result.error ?? null,
+        output: wellFormed(result.output),
+        steps: deepWellFormed(result.steps),
+        error: result.error ? wellFormed(result.error) : null,
         completedAt: new Date(),
       })
       .where(eq(schema.agentRun.id, runId));

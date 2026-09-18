@@ -7,6 +7,7 @@ import { invalidateSwr } from "@/lib/swr-cache";
 import { executeAgent, type RunnerAgent } from "@/agent/engine/runner";
 import { enqueueRun } from "@/agent/engine/scheduler";
 import { hasActivePlan, UPGRADE_MESSAGE } from "@/lib/billing";
+import { deepWellFormed, wellFormed } from "@/lib/text";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -132,7 +133,8 @@ export async function POST(request: Request) {
         const inner = await getDb();
         await inner
           .update(schema.agentRun)
-          .set({ steps })
+          // jsonb rejects lone UTF-16 surrogates; normalize before storing.
+          .set({ steps: deepWellFormed(steps) })
           .where(eq(schema.agentRun.id, runId));
       },
     });
@@ -145,9 +147,9 @@ export async function POST(request: Request) {
       .update(schema.agentRun)
       .set({
         status: result.status,
-        output: reply,
-        steps: result.steps,
-        error: result.error ?? null,
+        output: wellFormed(reply),
+        steps: deepWellFormed(result.steps),
+        error: result.error ? wellFormed(result.error) : null,
         completedAt: new Date(),
       })
       .where(eq(schema.agentRun.id, runId));
